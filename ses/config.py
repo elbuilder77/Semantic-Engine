@@ -1,0 +1,45 @@
+import os
+import json
+
+# --- Environment & Debug ---
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+
+# --- Embedding Model ---
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "cpu")
+VECTOR_SIZE = 384
+
+# --- Chunking ---
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
+
+# --- Qdrant ---
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
+
+if not DEBUG and not QDRANT_API_KEY:
+    raise ValueError("CRITICAL: QDRANT_API_KEY is mandatory in production.")
+
+# --- Redis ---
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+
+if not DEBUG and not REDIS_PASSWORD:
+    raise ValueError("CRITICAL: REDIS_PASSWORD is mandatory in production.")
+
+# --- Metadata ---
+ALLOWED_METADATA_KEYS = {"source", "author", "date", "tags", "category", "title", "url"}
+EXCLUDED_METADATA_KEYS = {"text_snippet", "full_text", "original_id"}
+
+# --- Persistence ---
+MOUNT_MANIFEST_PATH = os.getenv("MOUNT_MANIFEST_PATH", "data/mount_manifest.json")
+
+# --- SES Personal / Watcher ---
+WATCH_DIRECTORIES = [d.strip() for d in os.getenv("WATCH_DIRECTORIES", "").split(",")] if os.getenv("WATCH_DIRECTORIES") else []
+PERSONAL_NAMESPACE = os.getenv("PERSONAL_NAMESPACE", "personal_default")
+DEBOUNCE_SECONDS = float(os.getenv("DEBOUNCE_SECONDS", "2.0"))
+
+# --- Local LLM ---
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")

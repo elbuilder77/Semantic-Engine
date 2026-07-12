@@ -1,0 +1,12 @@
+[package]
+name = "jas_vector_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "jas_vector_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.18.3", features = ["extension-module"] }
+ndarray = "0.15.6"

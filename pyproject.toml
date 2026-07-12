@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ses-core"
+version = "2.0.0"
+description = "Semantic Engine Core - Offline-first RAG library without internet dependencies"
+authors = [{name = "Julio Patron", email = "juliopc92@gmail.com"}]
+license = {text = "GPL-3.0"}
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["rag", "llm", "offline", "ai", "semantic-search", "qdrant", "ollama", "local-ai"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "sentence-transformers>=2.2.2",
+    "qdrant-client>=1.12.0",
+    "pypdf>=3.9.0",
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.2",
+    "numpy>=1.26.0",
+    "pydantic>=2.4.2",
+    "watchdog>=3.0.0",
+    "redis>=5.0.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "black", "flake8"]
+server = ["fastapi>=0.104.0", "uvicorn>=0.23.2", "fpdf2>=2.7.4", "httpx>=0.24.1"]
+
+[project.urls]
+Homepage = "https://github.com/JPatronC92/SES"
+Documentation = "https://github.com/JPatronC92/SES/wiki"
+Repository = "https://github.com/JPatronC92/SES.git"
+
+[tool.setuptools.packages.find]
+include = ["ses*"]
