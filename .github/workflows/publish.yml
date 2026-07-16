@@ -1,16 +1,22 @@
-name: Publish to PyPI
+name: Package and Publish to PyPI
 
 on:
   release:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: package-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build-and-publish:
+  build:
+    name: Build & Verify Distribution
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
+    timeout-minutes: 20
     
     steps:
     - name: Checkout Source Code
@@ -19,7 +25,8 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.10"
+        python-version: "3.12"
+        cache: pip
 
     - name: Install build dependencies
       run: >-
@@ -33,10 +40,33 @@ jobs:
       run: >-
         twine check dist/*
 
+    - name: Upload verified distributions
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-distributions
+        path: dist/
+        if-no-files-found: error
+
+  publish:
+    name: Publish Verified Distribution
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ses-core
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Download verified distributions
+      uses: actions/download-artifact@v4
+      with:
+        name: python-distributions
+        path: dist/
+
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        # Skip existing just in case
-        skip-existing: true
-        # Use verbose output for debugging
-        verbose: true

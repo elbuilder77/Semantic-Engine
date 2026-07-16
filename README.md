@@ -225,6 +225,17 @@ npm --prefix portal run lint
 npm --prefix portal run build
 ```
 
+### Automatización en GitHub Actions
+
+[`ci.yml`](.github/workflows/ci.yml) valida el portal, Python y el wheel Rust en
+cada `push`/PR hacia `main`, y también admite ejecución manual. Opera con
+permisos de solo lectura y cancela ejecuciones anteriores de la misma rama.
+
+[`publish.yml`](.github/workflows/publish.yml) siempre construye y verifica los
+artefactos. Una ejecución manual **no publica**; la publicación a PyPI solo se
+habilita al publicar un GitHub Release y requiere configurar previamente el
+Trusted Publisher de PyPI para el environment `pypi`.
+
 ### Referencias externas
 
 Para integraciones más complejas, guías paso a paso de despliegue y documentación de la API interna, por favor visita nuestra [Wiki Oficial en GitHub](https://github.com/JPatronC92/SES/wiki).

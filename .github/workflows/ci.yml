@@ -1,15 +1,24 @@
-name: SES Semantic Engine CI/CD
+name: SES Semantic Engine CI
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   portal:
     name: Portal Lint & Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
     - name: Checkout Code
@@ -33,6 +42,7 @@ jobs:
   test-and-build:
     name: Python Test & Rust Wheel
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     services:
       redis:

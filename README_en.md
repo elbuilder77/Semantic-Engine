@@ -213,6 +213,17 @@ live Gateway contracts and stores its URL/key only in the browser. Its minimum
 gate is `npm ci --prefix portal`, `npm --prefix portal run lint`, and
 `npm --prefix portal run build`.
 
+### GitHub Actions automation
+
+[`ci.yml`](.github/workflows/ci.yml) validates the portal, Python code, and Rust
+wheel on every push/PR to `main`, and supports manual runs. It uses read-only
+permissions and cancels superseded runs for the same branch.
+
+[`publish.yml`](.github/workflows/publish.yml) always builds and verifies the
+distribution artifacts. A manual run **does not publish**; PyPI publication is
+only enabled for a published GitHub Release and requires a PyPI Trusted
+Publisher configured for the `pypi` environment.
+
 For more complex integrations, step-by-step deployment guides, and internal API documentation, please visit our [Official GitHub Wiki](https://github.com/JPatronC92/SES/wiki).
 
 ---
