@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import hashlib
+import hmac
 import io
 import json
 import logging
@@ -38,6 +39,39 @@ from gateway.database import get_database_adapter
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ses_enterprise_gateway")
 
+_LEGACY_COMPROMISED_ADMIN_KEY = "ses_dev_secret_key"
+_MIN_ADMIN_KEY_LENGTH = 32
+
+
+def require_gateway_admin_key() -> str:
+    """Return a configured bootstrap key or fail before serving traffic."""
+    admin_key = os.getenv("GATEWAY_ADMIN_KEY", "").strip()
+    if not admin_key:
+        raise RuntimeError(
+            "GATEWAY_ADMIN_KEY is required. Run scripts/rotate_local_secrets.py "
+            "for local development or inject it through a production secret manager."
+        )
+    if hmac.compare_digest(admin_key, _LEGACY_COMPROMISED_ADMIN_KEY):
+        raise RuntimeError("GATEWAY_ADMIN_KEY uses the revoked legacy development key.")
+    if admin_key.lower().startswith(("replace_", "change_me")):
+        raise RuntimeError("GATEWAY_ADMIN_KEY still contains an example placeholder.")
+    if len(admin_key) < _MIN_ADMIN_KEY_LENGTH:
+        raise RuntimeError(
+            f"GATEWAY_ADMIN_KEY must contain at least {_MIN_ADMIN_KEY_LENGTH} characters."
+        )
+    return admin_key
+
+
+def configured_cors_origins() -> List[str]:
+    raw_origins = os.getenv(
+        "GATEWAY_CORS_ORIGINS",
+        "http://127.0.0.1:8000,http://localhost:8000,http://localhost:3000",
+    )
+    origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+    if "*" in origins:
+        raise RuntimeError("GATEWAY_CORS_ORIGINS cannot contain a wildcard origin.")
+    return origins
+
 app = FastAPI(
     title="SES Enterprise Gateway",
     description="Commercial API Layer for SES Offline RAG Engine",
@@ -47,8 +81,8 @@ app = FastAPI(
 # CORS Middleware for client dashboard access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=configured_cors_origins(),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -91,10 +125,15 @@ async def startup_event():
     # 1. Connect to Database (Postgres or SQLite fallback)
     db = get_database_adapter()
     await db.connect()
-    
-    # 2. Bootstrap default developer key if no keys exist
-    dev_key = os.getenv("GATEWAY_ADMIN_KEY", "ses_dev_secret_key")
-    await db.bootstrap_dev_key(dev_key)
+
+    # 2. Revoke the known legacy key before activating the configured key.
+    await db.revoke_api_key(_LEGACY_COMPROMISED_ADMIN_KEY)
+    if redis_available:
+        legacy_hash = hashlib.sha256(_LEGACY_COMPROMISED_ADMIN_KEY.encode()).hexdigest()
+        await redis_client.delete(f"gateway:key:{legacy_hash}")
+
+    # 3. Bootstrap the explicitly configured administrator key.
+    await db.bootstrap_admin_key(require_gateway_admin_key())
 
 
 # --- MIDDLEWARES & AUTHENTICATOR ADAPTER ---
@@ -166,9 +205,20 @@ async def check_rate_limit(key_data: Dict[str, Any]):
             raise
         except Exception as e:
             logger.error(f"Redis rate limit error: {e}")
-            
+
+            if not DEBUG:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Rate limiting service unavailable.",
+                )
+
+    if not redis_available and not DEBUG:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Rate limiting service unavailable.",
+        )
+
     # In-memory rate limiting fallback
-    global in_memory_rate_limits
     limit_key = f"{api_key_hash}:{current_minute}"
     
     # Prune old metrics keys

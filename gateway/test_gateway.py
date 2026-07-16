@@ -11,7 +11,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 # Set environment variable for tests
 os.environ["DEBUG"] = "true"
+TEST_ADMIN_KEY = "ses_test_admin_key_only_for_tests_2026"
+os.environ["GATEWAY_ADMIN_KEY"] = TEST_ADMIN_KEY
 
+import gateway.server as server_module
 from gateway.server import app
 
 client = TestClient(app)
@@ -26,11 +29,11 @@ def mock_gateway_services():
         
         # Setup mock database state
         active_hashes = {
-            hashlib.sha256("ses_dev_secret_key".encode()).hexdigest(): {
-                "key": hashlib.sha256("ses_dev_secret_key".encode()).hexdigest(),
+            hashlib.sha256(TEST_ADMIN_KEY.encode()).hexdigest(): {
+                "key": hashlib.sha256(TEST_ADMIN_KEY.encode()).hexdigest(),
                 "id": "key_uuid_dev",
-                "key_prefix": "ses_dev_secret_key"[:15],
-                "name": "Default Developer Key",
+                "key_prefix": TEST_ADMIN_KEY[:15],
+                "name": "Test Administrator",
                 "namespace": "tenant_12345678",
                 "rate_limit": 100,
                 "role": "admin",
@@ -41,7 +44,7 @@ def mock_gateway_services():
         # Setup mock database
         mock_db = MagicMock()
         mock_db.connect = AsyncMock()
-        mock_db.bootstrap_dev_key = AsyncMock()
+        mock_db.bootstrap_admin_key = AsyncMock()
         
         # Dynamic get_api_key mock
         async def mock_get_api_key(key_hash):
@@ -66,7 +69,7 @@ def mock_gateway_services():
             return {
                 "key": raw_token,
                 "key_details": {
-                    "key": raw_token,
+                    "key": new_hash,
                     "name": name,
                     "namespace": f"tenant_marketing",
                     "rate_limit": rate_limit,
@@ -95,8 +98,8 @@ def mock_gateway_services():
         # mock list_api_keys
         mock_db.list_api_keys = AsyncMock(return_value=[
             {
-                "key": "ses_dev_secret_key"[:15] + "...",
-                "name": "Default Developer Key",
+                "key": TEST_ADMIN_KEY[:15] + "...",
+                "name": "Test Administrator",
                 "namespace": "tenant_12345678",
                 "rate_limit": 100,
                 "role": "admin",
@@ -113,7 +116,7 @@ def mock_gateway_services():
             "average_latency_ms": 1.2,
             "keys_performance": [
                 {
-                    "name": "Default Developer Key",
+                    "name": "Test Administrator",
                     "namespace": "tenant_12345678",
                     "role": "admin",
                     "total_calls": 50,
@@ -123,7 +126,7 @@ def mock_gateway_services():
             "recent_logs": [
                 {
                     "timestamp": "2026-06-16T10:00:00Z",
-                    "key_name": "Default Developer Key",
+                    "key_name": "Test Administrator",
                     "endpoint": "/api/v1/search",
                     "namespace": "tenant_12345678",
                     "status_code": 200,
@@ -212,8 +215,44 @@ def test_invalid_api_key():
     assert "Invalid or expired" in response.json()["detail"]
 
 
+def test_gateway_admin_key_must_be_explicit_and_strong(monkeypatch):
+    monkeypatch.delenv("GATEWAY_ADMIN_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="GATEWAY_ADMIN_KEY is required"):
+        server_module.require_gateway_admin_key()
+
+    monkeypatch.setenv("GATEWAY_ADMIN_KEY", "short")
+    with pytest.raises(RuntimeError, match="at least 32 characters"):
+        server_module.require_gateway_admin_key()
+
+    monkeypatch.setenv(
+        "GATEWAY_ADMIN_KEY",
+        "replace_with_a_unique_ses_key_of_at_least_32_characters",
+    )
+    with pytest.raises(RuntimeError, match="placeholder"):
+        server_module.require_gateway_admin_key()
+
+    monkeypatch.setenv("GATEWAY_ADMIN_KEY", TEST_ADMIN_KEY)
+    assert server_module.require_gateway_admin_key() == TEST_ADMIN_KEY
+
+
+def test_cors_rejects_wildcard(monkeypatch):
+    monkeypatch.setenv("GATEWAY_CORS_ORIGINS", "*")
+    with pytest.raises(RuntimeError, match="wildcard"):
+        server_module.configured_cors_origins()
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_fails_closed_in_production_without_redis():
+    key_data = {"key": "hashed-test-key", "rate_limit": 60}
+    with patch("gateway.server.DEBUG", False), patch("gateway.server.redis_available", False):
+        with pytest.raises(server_module.HTTPException) as exc_info:
+            await server_module.check_rate_limit(key_data)
+
+    assert exc_info.value.status_code == 503
+
+
 def test_search_and_rag_generation():
-    headers = {"X-API-Key": "ses_dev_secret_key"}
+    headers = {"X-API-Key": TEST_ADMIN_KEY}
     payload = {
         "query": "What are the rescission clauses?",
         "top_k": 3,
@@ -233,7 +272,7 @@ def test_search_and_rag_generation():
 
 
 def test_ingest_raw_text():
-    headers = {"X-API-Key": "ses_dev_secret_key"}
+    headers = {"X-API-Key": TEST_ADMIN_KEY}
     payload = {
         "text": "This is raw text that should be indexed by Qdrant.",
         "filename": "raw_note.txt",
@@ -248,7 +287,7 @@ def test_ingest_raw_text():
 
 
 def test_list_documents():
-    headers = {"X-API-Key": "ses_dev_secret_key"}
+    headers = {"X-API-Key": TEST_ADMIN_KEY}
     response = client.get("/api/v1/documents", headers=headers)
     assert response.status_code == 200
     data = response.json()
@@ -257,7 +296,7 @@ def test_list_documents():
 
 
 def test_delete_document():
-    headers = {"X-API-Key": "ses_dev_secret_key"}
+    headers = {"X-API-Key": TEST_ADMIN_KEY}
     response = client.delete("/api/v1/documents/doc_123", headers=headers)
     assert response.status_code == 200
     data = response.json()
@@ -265,7 +304,7 @@ def test_delete_document():
 
 
 def test_admin_api_key_management():
-    headers = {"X-API-Key": "ses_dev_secret_key"}
+    headers = {"X-API-Key": TEST_ADMIN_KEY}
     
     # 1. Create a new client key
     key_payload = {
@@ -276,10 +315,11 @@ def test_admin_api_key_management():
     }
     create_res = client.post("/api/v1/admin/keys", json=key_payload, headers=headers)
     assert create_res.status_code == 200
-    new_key_data = create_res.json()["key_details"]
+    create_payload = create_res.json()
+    new_key_data = create_payload["key_details"]
     assert new_key_data["name"] == "Frontend Web App"
     assert new_key_data["role"] == "client"
-    new_token = new_key_data["key"]
+    new_token = create_payload["key"]
     
     # 2. Verify we can search using the newly generated key
     search_payload = {

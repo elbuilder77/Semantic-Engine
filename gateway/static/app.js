@@ -5,7 +5,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     // --- Application State ---
     const state = {
-        activeApiKey: localStorage.getItem("ses_api_key") || "ses_dev_secret_key",
+        activeApiKey: localStorage.getItem("ses_api_key") || "",
         activeNamespace: "personal_default",
         isAdmin: true,
         recentLogs: [],

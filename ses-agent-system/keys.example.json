@@ -1,0 +1,4 @@
+{
+  "public_key": "replace_with_64_hex_characters",
+  "private_key": "store_only_in_ignored_keys_json_or_a_secret_manager"
+}

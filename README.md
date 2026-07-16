@@ -178,6 +178,26 @@ ses/
 
 ## 📚 Documentación Adicional
 
+### Reglas de ejecución para agentes
+
+El repositorio integra reglas operativas en [`AGENTS.md`](AGENTS.md), una lista
+de trabajo verificable en [`TASKS.md`](TASKS.md) y ocho SOP especializados bajo
+[`ses-agent-system/`](ses-agent-system/README.md). Estas reglas no constituyen un
+runtime multiagente: gobiernan cómo inspeccionar, modificar y validar el producto.
+
+Para preparar un entorno local seguro del Gateway y rotar las llaves de firma del
+sistema de agentes:
+
+```bash
+pip install -e .[server,security]
+python scripts/rotate_local_secrets.py
+```
+
+Los valores generados permanecen en `.env` y `ses-agent-system/keys.json`; ambos
+están excluidos de Git y el comando nunca imprime los secretos.
+
+### Referencias externas
+
 Para integraciones más complejas, guías paso a paso de despliegue y documentación de la API interna, por favor visita nuestra [Wiki Oficial en GitHub](https://github.com/JPatronC92/SES/wiki).
 
 ---

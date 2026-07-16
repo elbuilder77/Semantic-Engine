@@ -39,7 +39,7 @@ Esta capa está diseñada para operar como un servicio satélite del motor RAG, 
 
 - **Backend**: FastAPI (Python) que sirve tanto la interfaz web estática como las APIs REST.
 - **Base de Datos Vectorial**: Qdrant, administrado a través de las abstracciones del core.
-- **Caché y Limitador**: Redis, usado para rate limiting dinámico y almacenamiento de contadores. Si Redis no está disponible, el Gateway cuenta con un fallback automático a memoria local y persistencia en archivos JSON.
+- **Caché y Limitador**: Redis, usado para rate limiting dinámico y almacenamiento de contadores. En producción (`DEBUG=false`), una caída de Redis bloquea las rutas protegidas con `503` para evitar operar sin el control distribuido. El fallback en memoria existe únicamente para desarrollo explícito (`DEBUG=true`).
 
 ---
 
@@ -53,6 +53,22 @@ docker run -d -p 6379:6379 redis
 ```
 
 ### Ejecutar el Gateway
+Genere primero secretos locales únicos. El archivo `.env` y las llaves generadas
+están excluidos de Git y los valores no se imprimen:
+
+```bash
+pip install -e .[server,security]
+python scripts/rotate_local_secrets.py
+```
+
+Reinicie el Gateway inmediatamente después de la rotación para activar la nueva
+llave y descartar cualquier caché de autenticación del proceso anterior.
+
+En producción no use el archivo local: inyecte `GATEWAY_ADMIN_KEY`,
+`GATEWAY_CORS_ORIGINS`, las credenciales de Qdrant y Redis mediante su gestor de
+secretos. `GATEWAY_ADMIN_KEY` es obligatorio, debe tener al menos 32 caracteres
+y no tiene valor predeterminado.
+
 Para iniciar el servidor de desarrollo del Gateway:
 ```bash
 python gateway/run.py

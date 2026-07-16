@@ -49,7 +49,7 @@ class DatabaseAdapter(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def bootstrap_dev_key(self, dev_key: str) -> None:
+    async def bootstrap_admin_key(self, admin_key: str) -> None:
         pass
 
 
@@ -117,10 +117,10 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_usage_logs_tenant_date ON usage_logs(tenant_id, created_at);")
             conn.commit()
 
-    async def bootstrap_dev_key(self, dev_key: str) -> None:
+    async def bootstrap_admin_key(self, admin_key: str) -> None:
         def _bootstrap():
-            key_hash = hashlib.sha256(dev_key.encode()).hexdigest()
-            key_prefix = dev_key[:15]
+            key_hash = hashlib.sha256(admin_key.encode()).hexdigest()
+            key_prefix = admin_key[:15]
             
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -133,7 +133,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 tenant_id = str(uuid.uuid4())
                 cursor.execute(
                     "INSERT INTO tenants (id, name, plan_tier, rate_limit_per_minute) VALUES (?, ?, ?, ?)",
-                    (tenant_id, "Default Developer Tenant", "developer", 100)
+                    (tenant_id, "Bootstrap Administrator", "enterprise", 100)
                 )
                 
                 # Insert key mapping
@@ -143,7 +143,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                     (key_id, tenant_id, key_hash, key_prefix, "active")
                 )
                 conn.commit()
-                logger.info(f"🔑 Bootstrapped Dev Token inside SQLite: {key_prefix}...")
+                logger.info("Bootstrapped rotated administrator token inside SQLite.")
 
         await asyncio.to_thread(_bootstrap)
 
@@ -208,7 +208,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 return {
                     "key": raw_token,  # Return raw token to display to user once
                     "key_details": {
-                        "key": raw_token,
+                        "key": key_hash,
                         "name": name,
                         "namespace": f"tenant_{tenant_id[:8]}",
                         "rate_limit": rate_limit,
@@ -400,9 +400,9 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
             """)
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_logs_tenant_date ON usage_logs(tenant_id, created_at);")
 
-    async def bootstrap_dev_key(self, dev_key: str) -> None:
-        key_hash = hashlib.sha256(dev_key.encode()).hexdigest()
-        key_prefix = dev_key[:15]
+    async def bootstrap_admin_key(self, admin_key: str) -> None:
+        key_hash = hashlib.sha256(admin_key.encode()).hexdigest()
+        key_prefix = admin_key[:15]
         
         async with self.pool.acquire() as conn:
             existing = await conn.fetchval("SELECT id FROM api_keys WHERE key_hash = $1", key_hash)
@@ -412,13 +412,13 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
             async with conn.transaction():
                 tenant_id = await conn.fetchval(
                     "INSERT INTO tenants (name, plan_tier, rate_limit_per_minute) VALUES ($1, $2, $3) RETURNING id",
-                    "Default Developer Tenant", "developer", 100
+                    "Bootstrap Administrator", "enterprise", 100
                 )
                 await conn.execute(
                     "INSERT INTO api_keys (tenant_id, key_hash, key_prefix, status) VALUES ($1, $2, $3, $4)",
                     tenant_id, key_hash, key_prefix, "active"
                 )
-                logger.info(f"🔑 Bootstrapped Dev Token inside PostgreSQL: {key_prefix}...")
+                logger.info("Bootstrapped rotated administrator token inside PostgreSQL.")
 
     async def get_api_key(self, key_hash: str) -> Optional[Dict[str, Any]]:
         async with self.pool.acquire() as conn:
@@ -472,7 +472,7 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
                 return {
                     "key": raw_token,
                     "key_details": {
-                        "key": raw_token,
+                        "key": key_hash,
                         "name": name,
                         "namespace": f"tenant_{str(tenant_id)[:8]}",
                         "rate_limit": rate_limit,

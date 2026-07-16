@@ -46,6 +46,8 @@ env.json
 credentials.json
 *.pem
 *.key
+ses-agent-system/keys.json
+ses-agent-system/*.db
 
 # Logs
 *.log

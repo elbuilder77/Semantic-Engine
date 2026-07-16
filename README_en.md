@@ -178,6 +178,23 @@ ses/
 
 ## 📚 Additional Documentation
 
+### Agent execution rules
+
+Repository-wide operating rules live in [`AGENTS.md`](AGENTS.md), validated work
+is tracked in [`TASKS.md`](TASKS.md), and SES-specific SOPs live under
+[`ses-agent-system/`](ses-agent-system/README.md). These files govern engineering
+work; they are not a standalone multi-agent runtime.
+
+Generate and rotate ignored local Gateway and signing secrets with:
+
+```bash
+pip install -e .[server,security]
+python scripts/rotate_local_secrets.py
+```
+
+The command never prints secret values. Production deployments must inject
+equivalent values through a secret manager.
+
 For more complex integrations, step-by-step deployment guides, and internal API documentation, please visit our [Official GitHub Wiki](https://github.com/JPatronC92/SES/wiki).
 
 ---

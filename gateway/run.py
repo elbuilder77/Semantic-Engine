@@ -9,7 +9,7 @@ if __name__ == "__main__":
     print("==========================================================")
     print("[SES] Enterprise Gateway Server starting...")
     print("[WEB] Dashboard: http://localhost:8000")
-    print("[KEY] Default Admin Key: ses_dev_secret_key")
+    print("[KEY] Administrator key loaded from GATEWAY_ADMIN_KEY")
     print("==========================================================")
     
     # Run server

@@ -32,11 +32,13 @@ dependencies = [
     "pydantic>=2.4.2",
     "watchdog>=3.0.0",
     "redis>=5.0.1",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "black", "flake8"]
 server = ["fastapi>=0.104.0", "uvicorn>=0.23.2", "fpdf2>=2.7.4", "httpx>=0.24.1"]
+security = ["cryptography>=41.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/JPatronC92/SES"

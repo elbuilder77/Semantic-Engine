@@ -1,6 +1,20 @@
 import os
 import json
 
+from dotenv import load_dotenv
+
+
+# Honor the documented local .env workflow without overriding process-level
+# environment variables supplied by production secret managers.
+load_dotenv(override=False)
+
+
+def _missing_or_placeholder(value) -> bool:
+    if not value:
+        return True
+    normalized = value.strip().lower()
+    return normalized.startswith(("change_me", "replace_"))
+
 # --- Environment & Debug ---
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
@@ -17,16 +31,16 @@ CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
 
-if not DEBUG and not QDRANT_API_KEY:
-    raise ValueError("CRITICAL: QDRANT_API_KEY is mandatory in production.")
+if not DEBUG and _missing_or_placeholder(QDRANT_API_KEY):
+    raise ValueError("CRITICAL: a non-placeholder QDRANT_API_KEY is mandatory in production.")
 
 # --- Redis ---
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
 
-if not DEBUG and not REDIS_PASSWORD:
-    raise ValueError("CRITICAL: REDIS_PASSWORD is mandatory in production.")
+if not DEBUG and _missing_or_placeholder(REDIS_PASSWORD):
+    raise ValueError("CRITICAL: a non-placeholder REDIS_PASSWORD is mandatory in production.")
 
 # --- Metadata ---
 ALLOWED_METADATA_KEYS = {"source", "author", "date", "tags", "category", "title", "url"}
