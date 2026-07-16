@@ -101,7 +101,7 @@ export function ApiKeyRow({ apiKey, onRevoke, fullKeyToCopy }: ApiKeyRowProps) {
       {fullKeyToCopy && (
         <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-amber-400 mb-1">Copy this key now. You won't be able to see it again.</p>
+            <p className="text-xs font-medium text-amber-400 mb-1">Copy this key now. You won&apos;t be able to see it again.</p>
             <code className="text-sm font-mono text-white break-all">{fullKeyToCopy}</code>
           </div>
           <button 

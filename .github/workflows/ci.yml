@@ -7,13 +7,34 @@ on:
     branches: [ "main" ]
 
 jobs:
+  portal:
+    name: Portal Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js 22
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: "npm"
+        cache-dependency-path: portal/package-lock.json
+
+    - name: Install Portal Dependencies
+      run: npm ci --prefix portal
+
+    - name: Validate Portal
+      run: |
+        npm --prefix portal run lint
+        npm --prefix portal run build
+
   test-and-build:
-    name: Lint, Test & Compile
+    name: Python Test & Rust Wheel
     runs-on: ubuntu-latest
 
     services:
-      # Optional: In case real integration tests are added later,
-      # but currently tests are 100% mocked, so service containers are not strictly needed.
       redis:
         image: redis:7.4-alpine
         ports:
@@ -31,6 +52,8 @@ jobs:
 
     - name: Install Rust Toolchain
       uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
 
     - name: Cache Cargo Dependencies
       uses: actions/cache@v4
@@ -53,22 +76,23 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install -e .[dev,server]
-
-
+        python -m pip install "maturin>=1,<2"
 
     - name: Code Style Check (Linter)
       run: |
         # Stop the build if there are Python syntax errors or undefined names
-        flake8 ses/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 ses/ tests/ gateway/ --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings
-        flake8 ses/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 ses/ tests/ gateway/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: Compile Rust Core (PyO3)
+    - name: Validate and Build Rust Wheel (PyO3)
       run: |
-        cd core_rs
-        cargo build --release
-        # Copy compiled shared library so Python tests can load it
-        cp target/release/libjas_vector_core.so ../jas_vector_core.so || cp target/release/libjas_vector_core.dylib ../jas_vector_core.so || cp target/release/jas_vector_core.dll ../jas_vector_core.so
+        cargo fmt --manifest-path core_rs/Cargo.toml -- --check
+        cargo test --manifest-path core_rs/Cargo.toml
+        cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
+        python -m maturin build --release --manifest-path core_rs/Cargo.toml --interpreter python --out core_rs/target/wheels
+        python -m pip install --force-reinstall core_rs/target/wheels/*.whl
+        python -c "import numpy as np, jas_vector_core as j; q=np.array([1.0,0.0],dtype=np.float32); d=np.array([[0.0,1.0],[1.0,0.0]],dtype=np.float32); assert j.cosine_similarity_search_numpy(q,d,1)[0][0] == 1"
 
     - name: Run Test Suite (Pytest)
       env:
@@ -77,7 +101,6 @@ jobs:
       run: |
         pytest --cov=ses --cov-report=xml
 
-    - name: Verify Performance Benchmark
+    - name: Run Bounded Synthetic Performance Smoke
       run: |
-        python tests/performance/benchmark.py
-
+        python -c "import sys; sys.path.insert(0, 'tests/performance'); import benchmark; benchmark.benchmark_search(num_documents=1000, dimensions=384, top_k=10, iterations=3)"

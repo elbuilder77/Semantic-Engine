@@ -19,8 +19,8 @@ Si estás construyendo aplicaciones de **Inteligencia Artificial Local** (con Ol
 
 Las librerías tradicionales (LangChain, LlamaIndex) están diseñadas pensando en la nube (OpenAI, Pinecone), haciéndolas pesadas y difíciles de aislar. **SES Core nace con una filosofía diame[...]
 
-* 🔒 **Privacidad Total:** Cero llamadas a internet. Todo el procesamiento de embeddings y LLM ocurre en tu hardware local.
-* ⚡ **Ultra Rápido:** Optimizada para baja latencia (Búsqueda vectorial en `~1.5 ms`).
+* 🔒 **Operación local:** Los documentos, embeddings y consultas permanecen en tu infraestructura. El modelo de embeddings debe aprovisionarse localmente antes de operar sin red.
+* ⚡ **Ruta vectorial híbrida:** Qdrant realiza la recuperación y un módulo Rust opcional puede recalcular similitud sobre lotes grandes.
 * 📁 **Mount Mode Automático:** Incluye un *Watcher* que vigila tus carpetas locales (PDFs, DOCX, XLSX) y las indexa incrementalmente en segundo plano.
 * 🧩 **Extremadamente Modular:** Úsala en scripts de CLI, aplicaciones de escritorio (PyQt) o como el motor interno de tu propia API.
 * 🚀 **Re-Ranking y Batch Search:** Capacidades avanzadas integradas listas para producción.
@@ -29,13 +29,20 @@ Las librerías tradicionales (LangChain, LlamaIndex) están diseñadas pensando 
 
 ## 🚀 Benchmarks de Rendimiento
 
-SES Core está construido para ser rápido, utilizando procesamiento matricial optimizado y operaciones asíncronas para no bloquear tus aplicaciones.
+El repositorio incluye un microbenchmark reproducible de vectores sintéticos. No
+representa latencia end-to-end de Qdrant, ingestión, disco ni generación LLM.
 
 | Operación | Rendimiento Promedio | Notas |
 |-----------|----------------------|-------|
-| **Throughput de Chunking Semántico** | `> 190,000 KB/s` | Capaz de segmentar miles de páginas de texto en milisegundos. |
-| **Búsqueda Vectorial (1,000 Docs)** | `~ 1.5 ms` | Medido usando Qdrant en memoria o Numpy puro. |
-| **Aceleración Híbrida Rust** | `Opcional` | El núcleo base puede extenderse mediante un módulo PyO3 (C++) para cargas empresariales. |
+| **Python, 1,000 × 384** | `47.60 ms/búsqueda` | 3 iteraciones, vectores sintéticos normalizados. |
+| **Rust/NumPy, 1,000 × 384** | `0.97 ms/búsqueda` | Wheel CPython 3.12, ndarray contiguo sin copia. |
+| **Alcance** | `microbenchmark local` | Windows AMD64 (16 CPU lógicas), CPython 3.12, 15-jul-2026; no es un SLA. |
+
+Comando equivalente:
+
+```powershell
+python -c "import sys; sys.path.insert(0, 'tests/performance'); import benchmark; benchmark.benchmark_search(num_documents=1000, dimensions=384, top_k=10, iterations=3)"
+```
 
 ---
 
@@ -58,6 +65,16 @@ pip install ses-core
 *(Opcional)* Si necesitas construir una API web encima de SES Core, instala las dependencias de servidor (FastAPI, Uvicorn):
 ```bash
 pip install ses-core[server]
+```
+
+El módulo Rust se distribuye como wheel independiente y no forma parte del
+paquete Python base:
+
+```powershell
+python -m pip install "maturin>=1,<2"
+python -m maturin build --release --manifest-path core_rs/Cargo.toml --interpreter python --out core_rs/target/wheels
+$wheel = Get-ChildItem core_rs/target/wheels/*.whl | Select-Object -First 1
+python -m pip install --force-reinstall $wheel.FullName
 ```
 
 ---
@@ -196,6 +213,18 @@ python scripts/rotate_local_secrets.py
 Los valores generados permanecen en `.env` y `ses-agent-system/keys.json`; ambos
 están excluidos de Git y el comando nunca imprime los secretos.
 
+### Portal web
+
+El frontend administrativo en [`portal/`](portal/README.md) consume los
+contratos reales del Gateway y conserva URL/llave únicamente en el navegador.
+Su gate mínimo es:
+
+```powershell
+npm ci --prefix portal
+npm --prefix portal run lint
+npm --prefix portal run build
+```
+
 ### Referencias externas
 
 Para integraciones más complejas, guías paso a paso de despliegue y documentación de la API interna, por favor visita nuestra [Wiki Oficial en GitHub](https://github.com/JPatronC92/SES/wiki).
@@ -207,4 +236,6 @@ Para integraciones más complejas, guías paso a paso de despliegue y documentac
 SES opera bajo un modelo **Open Core**. 
 Esta librería (`ses-core`) representa nuestro "Nivel 1" y siempre será **gratuita, open-source y libre de tracking** (GPLv3) para la comunidad de desarrolladores de IA local.
 
-Para corporativos o infraestructuras masivas que requieran **SaaS Managed, Despliegues On-Premise con controles RBAC, o SLAs garantizados**, ofrecemos paquetes *SES Enterprise*. Contáctanos para[...]
+SaaS administrado, RBAC on-premise, SLAs y cumplimiento regulatorio siguen
+siendo objetivos de productización; este repositorio por sí solo no acredita
+certificación HIPAA o GDPR.

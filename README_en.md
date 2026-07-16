@@ -1,10 +1,10 @@
 <div align="center">
   <h1>🧠 SES Core: Semantic Engine</h1>
-  <p><strong>The definitive RAG library for 100% Offline and Private Artificial Intelligence applications.</strong></p>
+  <p><strong>An offline-first RAG library for private, locally operated AI applications.</strong></p>
   
   [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org)
   [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-  [![Offline First](https://img.shields.io/badge/Network-0%20Dependencies-red.svg)](#)
+  [![Offline First](https://img.shields.io/badge/Runtime-Local--First-red.svg)](#)
   
   *Read this in [Spanish (Español)](README.md)*
 </div>
@@ -17,25 +17,27 @@ If you are building **Local Artificial Intelligence** applications (with Ollama,
 
 Traditional libraries (LangChain, LlamaIndex) are designed with the cloud in mind (OpenAI, Pinecone), making them heavy and hard to isolate. **SES Core is born with a diametrically opposite philosophy: Offline-First.**
 
-* 🔒 **Total Privacy:** Zero internet calls. All embeddings and LLM processing happen on your local hardware.
-* ⚡ **Ultra Fast:** Optimized for low latency (Vector search in `~1.5 ms`).
+* 🔒 **Local operation:** Documents, embeddings, and queries stay in your infrastructure. Provision the embedding model locally before operating without network access.
+* ⚡ **Hybrid vector path:** Qdrant retrieves candidates and an optional Rust module can recompute similarity for large batches.
 * 📁 **Automatic Mount Mode:** Includes a *Watcher* that monitors your local folders (PDFs, DOCX, XLSX) and incrementally indexes them in the background.
 * 🧩 **Extremely Modular:** Use it in CLI scripts, desktop apps (PyQt), or as the internal engine for your own API.
 * 🚀 **Re-Ranking and Batch Search:** Advanced built-in capabilities ready for production.
 
 ---
 
-## ⚡ Performance (Validated)
+## ⚡ Performance Evidence
 
-SES Core measures and validates its performance automatically:
+The repository contains a reproducible synthetic-vector microbenchmark. It does
+not measure end-to-end Qdrant, ingestion, disk, or LLM latency.
 
 | Metric | Value | Method |
 |---------|-------|--------|
-| **Chunking Throughput** | > 190,000 KB/s | `tests/performance/benchmark.py` |
-| **Vector Search (1K docs)** | `~ 1.5 ms` | Cosine similarity (Python + Rust) |
-| **Rust Core Acceleration** | 2-10x faster | `jas_vector_core` vs Python |
+| **Python, 1,000 × 384** | `47.60 ms/search` | 3 iterations, normalized synthetic vectors |
+| **Rust/NumPy, 1,000 × 384** | `0.97 ms/search` | CPython 3.12 wheel, contiguous zero-copy ndarray |
+| **Scope** | `local microbenchmark` | Windows AMD64 (16 logical CPUs), CPython 3.12, July 15, 2026; not an SLA |
 
-📊 **Benchmarks executed on every commit** → [View history in Actions](https://github.com/JPatronC92/SES/actions)
+CI runs the same bounded workload as a performance smoke, without treating a
+single runner result as an SLA.
 
 ---
 
@@ -58,6 +60,15 @@ pip install ses-core
 *(Optional)* If you need to build a web API on top of SES Core, install the server dependencies (FastAPI, Uvicorn):
 ```bash
 pip install ses-core[server]
+```
+
+The Rust extension is packaged as a separate wheel:
+
+```powershell
+python -m pip install "maturin>=1,<2"
+python -m maturin build --release --manifest-path core_rs/Cargo.toml --interpreter python --out core_rs/target/wheels
+$wheel = Get-ChildItem core_rs/target/wheels/*.whl | Select-Object -First 1
+python -m pip install --force-reinstall $wheel.FullName
 ```
 
 ---
@@ -195,6 +206,13 @@ python scripts/rotate_local_secrets.py
 The command never prints secret values. Production deployments must inject
 equivalent values through a secret manager.
 
+### Web portal
+
+The administration frontend under [`portal/`](portal/README.md) consumes the
+live Gateway contracts and stores its URL/key only in the browser. Its minimum
+gate is `npm ci --prefix portal`, `npm --prefix portal run lint`, and
+`npm --prefix portal run build`.
+
 For more complex integrations, step-by-step deployment guides, and internal API documentation, please visit our [Official GitHub Wiki](https://github.com/JPatronC92/SES/wiki).
 
 ---
@@ -204,4 +222,6 @@ For more complex integrations, step-by-step deployment guides, and internal API 
 SES operates under an **Open Core** model. 
 This library (`ses-core`) represents our "Tier 1" and will always be **free, open-source, and tracking-free** (GPLv3) for the local AI developer community.
 
-For corporations or massive infrastructures requiring **SaaS Managed, On-Premise deployments with RBAC controls, or guaranteed SLAs**, we offer *SES Enterprise* packages. Contact us for enterprise AI solutions that are HIPAA and GDPR compliant from day 1.
+Managed SaaS, on-premise RBAC, SLAs, and regulated-industry compliance remain
+productization targets; this repository alone is not evidence of HIPAA or GDPR
+certification.

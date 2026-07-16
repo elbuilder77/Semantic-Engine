@@ -6,12 +6,13 @@ Nuestro objetivo es proveer a la comunidad de desarrolladores de un motor RAG (*
 
 ---
 
-## 🎯 Fase 1: Estabilización del Núcleo RAG (Completado ✅)
+## 🎯 Fase 1: Estabilización del Núcleo RAG (En validación)
 - [x] Migración hacia una arquitectura pura de librería (`ses-core`).
 - [x] Desacoplamiento total de dependencias web (FastAPI/Uvicorn pasan a ser opcionales `[server]`).
 - [x] Integración de `SentenceTransformers` y soporte estricto para modelos locales (Ollama).
 - [x] Pruebas de rendimiento y automatización CI/CD de benchmarks en GitHub Actions.
-- [x] Aceleración híbrida en Rust (`jas_vector_core`) para búsqueda por similitud de coseno.
+- [x] Aceleración híbrida en Rust (`jas_vector_core`) con wheel CPython 3.12, pruebas unitarias y ruta NumPy sin copia.
+- [ ] Cerrar pruebas de integración reales y paridad local/Docker antes de declarar estable el núcleo.
 
 ## 🗂️ Fase 2: Mount Mode & Filesystem (Actual)
 - [x] Implementación de **Mount Mode**: Indexación asíncrona de grandes repositorios en modo de solo lectura.
@@ -28,6 +29,8 @@ Nuestro objetivo es proveer a la comunidad de desarrolladores de un motor RAG (*
 - [ ] **RBAC Interno:** Controles de acceso basados en roles inyectados directamente en los metadatos de Qdrant.
 
 ## 🌍 Fase 4: Ecosistema y Adopción (Futuro)
+- [x] Portal administrativo Next.js conectado a los contratos reales del Gateway y validado con lint/build.
+- [ ] Automatizar pruebas E2E del portal contra un stack local reproducible.
 - [ ] **Publicación Continua en PyPI** y gestión de releases automatizadas con Trusted Publishers.
 - [ ] **Bindings Oficiales:** Wrappers para Node.js y Go consumiendo el núcleo de alto rendimiento.
 - [ ] **SES Enterprise:** Oferta corporativa con SLAs garantizados y cumplimiento de cumplimiento normativo (HIPAA / GDPR).

@@ -453,6 +453,7 @@ class OfflineRAGEngine:
             return {"results": [], "total_documents": 0, "processing_time_ms": 0}
 
         final_results_order = []
+        rust_accelerated = False
 
         if RUST_AVAILABLE and len(search_result) > 50:
             try:
@@ -465,7 +466,11 @@ class OfflineRAGEngine:
                 )
 
                 reranked_indices = await asyncio.to_thread(
-                    jas_vector_core.cosine_similarity_search,
+                    getattr(
+                        jas_vector_core,
+                        "cosine_similarity_search_numpy",
+                        jas_vector_core.cosine_similarity_search,
+                    ),
                     q_vec_np,
                     c_vecs_np,
                     len(search_result),
@@ -475,6 +480,7 @@ class OfflineRAGEngine:
                     point = search_result[idx]
                     point.score = float(new_score)
                     final_results_order.append(point)
+                rust_accelerated = True
 
             except Exception as exc:
                 logger.error(
@@ -507,6 +513,7 @@ class OfflineRAGEngine:
             "results": reranked_results[:top_k],
             "total_documents": await self._get_points_count(collection_name),
             "processing_time_ms": (time.time() - t0) * 1000,
+            "rust_acceleration": rust_accelerated,
         }
 
     async def batch_search(

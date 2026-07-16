@@ -348,7 +348,7 @@ async def api_search(payload: SearchRequestPayload, key_data: Dict[str, Any] = D
             "total_documents": search_result.get("total_documents", 0),
             "search_time_ms": search_result.get("processing_time_ms", 0),
             "total_time_ms": latency_ms,
-            "rust_accelerated": search_result.get("rust_acceleration", False) or RUST_AVAILABLE_FALLBACK()
+            "rust_accelerated": search_result.get("rust_acceleration", False)
         }
         
         # Log metrics in background

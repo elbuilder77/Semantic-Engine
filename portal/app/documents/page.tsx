@@ -18,7 +18,19 @@ export default function DocumentsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchDocuments();
+    let active = true;
+    api.listDocuments(100)
+      .then((data) => {
+        if (active) setDocuments(data.documents || []);
+      })
+      .catch((error: unknown) => console.error(error))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const fetchDocuments = async () => {

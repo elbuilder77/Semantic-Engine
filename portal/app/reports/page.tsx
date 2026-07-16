@@ -111,7 +111,7 @@ export default function ReportsPage() {
           <div>
             <h3 className="font-semibold text-white mb-1">Looking for Evidence Audit Reports?</h3>
             <p className="text-slate-400 text-sm">
-              Semantic Evidence Audit Reports are generated on a per-query basis. To generate one, go to the <a href="/search" className="text-purple-400 hover:underline">RAG Search</a> page, execute a query, and click "Export Audit PDF" on the results panel.
+              Semantic Evidence Audit Reports are generated on a per-query basis. To generate one, go to the <a href="/search" className="text-purple-400 hover:underline">RAG Search</a> page, execute a query, and click &quot;Export Audit PDF&quot; on the results panel.
             </p>
           </div>
         </div>

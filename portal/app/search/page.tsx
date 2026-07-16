@@ -7,7 +7,7 @@ import { useToast } from "@/components/Toast";
 import { SearchResult } from "@/components/SearchResult";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { EmptyState } from "@/components/EmptyState";
-import { Search as SearchIcon, FileBox, Zap, BrainCircuit, SlidersHorizontal } from "lucide-react";
+import { Search as SearchIcon, FileBox, Zap, BrainCircuit } from "lucide-react";
 
 export default function SearchPage() {
   const { toast } = useToast();
@@ -171,6 +171,9 @@ export default function SearchPage() {
                 </span>
                 <span className="text-slate-400">
                   Total: <strong className="text-slate-200">{searchStats.totalTime.toFixed(0)}ms</strong>
+                </span>
+                <span className="text-slate-400">
+                  Engine: <strong className="text-slate-200">{searchStats.rustUsed ? "Rust hybrid" : "Python"}</strong>
                 </span>
               </div>
               

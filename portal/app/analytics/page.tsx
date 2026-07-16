@@ -3,36 +3,34 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { AnalyticsData } from "@/lib/types";
-import { useToast } from "@/components/Toast";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell, Legend
 } from "recharts";
 import { Download } from "lucide-react";
 
 const COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#10b981'];
 
 export default function AnalyticsPage() {
-  const { toast } = useToast();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAnalytics();
-  }, []);
+    let active = true;
+    api.getAnalytics()
+      .then((data) => {
+        if (active) setAnalytics(data);
+      })
+      .catch((error: unknown) => console.error(error))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
-  const fetchAnalytics = async () => {
-    try {
-      const data = await api.getAnalytics();
-      setAnalytics(data);
-    } catch (err) {
-      console.error(err);
-      toast("Failed to load analytics", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (loading) return <LoadingSpinner text="Loading analytics data..." />;
   if (!analytics) return <div className="p-8 text-slate-500">Failed to load analytics data.</div>;
@@ -43,28 +41,26 @@ export default function AnalyticsPage() {
     { name: 'Ingestions', value: analytics.total_ingestions },
   ].filter(d => d.value > 0);
 
-  // Fake timeline data since backend doesn't provide historical buckets yet
-  const timelineData = Array.from({ length: 7 }).map((_, i) => ({
-    name: `Day ${i + 1}`,
-    requests: Math.floor(Math.random() * 50) + 10,
-    errors: Math.floor(Math.random() * 5),
-  }));
+  const timelineData = Array.from(
+    analytics.recent_logs.reduce((buckets, log) => {
+      const date = new Date(log.timestamp);
+      if (Number.isNaN(date.getTime())) return buckets;
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl">
-          <p className="text-slate-300 font-medium mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.name}: {entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
+      const key = date.toISOString().slice(0, 10);
+      const current = buckets.get(key) || {
+        key,
+        name: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        requests: 0,
+        errors: 0,
+      };
+      current.requests += 1;
+      if (log.status_code >= 400) current.errors += 1;
+      buckets.set(key, current);
+      return buckets;
+    }, new Map<string, { key: string; name: string; requests: number; errors: number }>()).values(),
+  )
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .slice(-7);
 
   return (
     <div className="p-8 max-w-7xl mx-auto w-full">
@@ -101,19 +97,25 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Timeline Chart */}
         <div className="lg:col-span-2 glass-panel rounded-xl p-6 min-h-[350px] flex flex-col">
-          <h3 className="text-lg font-medium text-white mb-6">Request Volume (7 Days)</h3>
+          <h3 className="text-lg font-medium text-white mb-6">Observed Request Volume</h3>
           <div className="flex-1 w-full min-h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
+            {timelineData.length > 0 ? <ResponsiveContainer width="100%" height="100%">
               <LineChart data={timelineData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                <RechartsTooltip content={<CustomTooltip />} />
+                <RechartsTooltip
+                  contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: "0.5rem" }}
+                />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                 <Line type="monotone" dataKey="requests" name="Total Requests" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                 <Line type="monotone" dataKey="errors" name="Errors" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} />
               </LineChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer> : (
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                No persisted request history is available yet.
+              </div>
+            )}
           </div>
         </div>
 
@@ -138,7 +140,9 @@ export default function AnalyticsPage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <RechartsTooltip content={<CustomTooltip />} />
+                  <RechartsTooltip
+                    contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: "0.5rem" }}
+                  />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>

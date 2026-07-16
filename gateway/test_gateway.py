@@ -150,7 +150,8 @@ def mock_gateway_services():
                 }
             ],
             "total_documents": 10,
-            "processing_time_ms": 1.5
+            "processing_time_ms": 1.5,
+            "rust_acceleration": False
         })
         
         mock_engine.ingest_file = AsyncMock(return_value={
@@ -269,6 +270,7 @@ def test_search_and_rag_generation():
     assert "rescission clause" in data["answer"]
     assert len(data["results"]) == 1
     assert data["results"][0]["id"] == "doc_123"
+    assert data["rust_accelerated"] is False
 
 
 def test_ingest_raw_text():

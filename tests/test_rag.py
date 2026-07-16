@@ -1,4 +1,8 @@
+import asyncio
+
 import pytest
+import numpy as np
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, AsyncMock
 from ses.core.rag import OfflineRAGEngine
 
@@ -62,3 +66,49 @@ async def test_ingest_file_uses_deterministic_mount_ids():
 
     assert first["document_id"] == second["document_id"]
     assert [p.id for p in first_points] == [p.id for p in second_points]
+
+
+@pytest.mark.asyncio
+async def test_engine_search_uses_numpy_rust_path_for_large_candidate_set():
+    service = OfflineRAGEngine()
+    service.model = MagicMock()
+    service.model.encode.return_value = np.array([1.0, 0.0], dtype=np.float32)
+    points = [
+        SimpleNamespace(
+            id=str(index),
+            vector=[1.0, 0.0],
+            score=0.5,
+            payload={"text_snippet": f"document {index}", "indexed_at": 0},
+        )
+        for index in range(51)
+    ]
+    service.vector_store = MagicMock()
+    service.vector_store.search = AsyncMock(return_value=points)
+    service._get_usage_scores = AsyncMock(
+        return_value={str(index): 0.0 for index in range(51)}
+    )
+    service._record_query = AsyncMock()
+    service._get_points_count = AsyncMock(return_value=51)
+
+    rust_search = MagicMock(
+        return_value=[(index, 1.0 - index / 100.0) for index in range(51)]
+    )
+    rust_module = SimpleNamespace(
+        cosine_similarity_search_numpy=rust_search,
+        cosine_similarity_search=MagicMock(),
+    )
+
+    with patch("ses.core.rag.RUST_AVAILABLE", True), patch(
+        "ses.core.rag.jas_vector_core", rust_module, create=True
+    ):
+        result = await service.search("test_ns", "hello", top_k=51)
+        await asyncio.sleep(0)
+
+    rust_search.assert_called_once()
+    query_arg, documents_arg, top_k_arg = rust_search.call_args.args
+    assert query_arg.dtype == np.float32
+    assert query_arg.shape == (2,)
+    assert documents_arg.dtype == np.float32
+    assert documents_arg.shape == (51, 2)
+    assert top_k_arg == 51
+    assert result["rust_acceleration"] is True

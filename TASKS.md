@@ -20,7 +20,7 @@ when implementation and validation evidence exist.
 
 ## P2 - Productization
 
-- [ ] Complete or remove the incomplete `portal/` frontend.
+- [x] Complete the `portal/` client contract and validate lint/build/runtime routes.
 - [ ] Align README and ROADMAP claims with validated runtime behavior.
-- [ ] Decide how the Rust extension is packaged and add Rust tests.
+- [x] Package the Rust extension as a CPython wheel and add Rust/Python integration tests.
 - [ ] Run named ingestion and retrieval workloads before publishing scale claims.

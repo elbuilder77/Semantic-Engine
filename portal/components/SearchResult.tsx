@@ -1,6 +1,6 @@
 import { SearchResultItem } from "@/lib/types";
 import { FileText, Hash, Clock } from "lucide-react";
-import { formatBytes, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
 export function SearchResult({ result }: { result: SearchResultItem }) {
   const scorePct = Math.round(result.score * 100);
@@ -47,9 +47,9 @@ export function SearchResult({ result }: { result: SearchResultItem }) {
       </div>
       
       <div className="bg-slate-950 rounded-lg p-4 text-sm text-slate-300 leading-relaxed border border-slate-800/50">
-        <span className="italic">"</span>
+        <span className="italic">&ldquo;</span>
         {result.text_snippet || result.text}
-        <span className="italic">"</span>
+        <span className="italic">&rdquo;</span>
       </div>
     </div>
   );

@@ -65,11 +65,16 @@ def benchmark_search(num_documents=1000, dimensions=384, top_k=10, iterations=50
         docs_np = np.array(docs, dtype=np.float32)
         
         # Warmup
-        _ = jas_vector_core.cosine_similarity_search(q_np, docs_np, top_k)
+        rust_search = getattr(
+            jas_vector_core,
+            "cosine_similarity_search_numpy",
+            jas_vector_core.cosine_similarity_search,
+        )
+        _ = rust_search(q_np, docs_np, top_k)
         
         start_time = time.perf_counter()
         for _ in range(iterations):
-            _ = jas_vector_core.cosine_similarity_search(q_np, docs_np, top_k)
+            _ = rust_search(q_np, docs_np, top_k)
         rust_duration = (time.perf_counter() - start_time) / iterations * 1000 # ms per search
         print(f"  -> Rust Core: {rust_duration:.4f} ms por búsqueda")
         

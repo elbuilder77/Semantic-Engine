@@ -22,7 +22,19 @@ export default function KeysPage() {
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchKeys();
+    let active = true;
+    api.listApiKeys()
+      .then((data) => {
+        if (active) setKeys(data.keys);
+      })
+      .catch((error: unknown) => console.error(error))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const fetchKeys = async () => {
@@ -168,14 +180,16 @@ export default function KeysPage() {
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  {keys.map((key, i) => (
+                  {keys.map((key) => (
                     <ApiKeyRow 
                       key={key.key} 
                       apiKey={key} 
                       onRevoke={handleRevoke}
-                      // Only show full key for the very first one if it matches what we just created
-                      // The backend actually hashes the key so we can't easily match. We just pass it to the top row if newly created.
-                      fullKeyToCopy={i === 0 && newlyCreatedKey ? newlyCreatedKey : undefined}
+                      fullKeyToCopy={
+                        newlyCreatedKey && key.key.startsWith(newlyCreatedKey.slice(0, 15))
+                          ? newlyCreatedKey
+                          : undefined
+                      }
                     />
                   ))}
                 </div>

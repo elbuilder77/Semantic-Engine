@@ -13,9 +13,11 @@ export default function SettingsPage() {
   const [testStatus, setTestStatus] = useState<"idle" | "success" | "error">("idle");
 
   useEffect(() => {
-    // Load from localStorage on mount
-    setApiUrl(localStorage.getItem("ses_api_url") || "http://localhost:8000");
-    setApiKey(localStorage.getItem("ses_api_key") || "");
+    const timeout = window.setTimeout(() => {
+      setApiUrl(localStorage.getItem("ses_api_url") || "http://localhost:8000");
+      setApiKey(localStorage.getItem("ses_api_key") || "");
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, []);
 
   const handleSave = () => {
@@ -34,7 +36,7 @@ export default function SettingsPage() {
     setTestStatus("idle");
     
     try {
-      await api.getHealth();
+      await Promise.all([api.getHealth(), api.getAnalytics()]);
       setTestStatus("success");
       toast("Connection successful!", "success");
     } catch (err) {
@@ -83,7 +85,7 @@ export default function SettingsPage() {
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus-ring placeholder-slate-600 transition-all font-mono"
             />
             <p className="text-xs text-slate-500 mt-2">
-              Requires an API key with the 'admin' role to access all portal features.
+              Requires an API key with the &apos;admin&apos; role to access all portal features.
             </p>
           </div>
 

@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SES Enterprise Portal
 
-## Getting Started
+Next.js 16 administration portal for the FastAPI Gateway in `../gateway`.
+The portal is a browser client: it does not embed an API key at build time.
+The configured Gateway URL and administrator key are stored in the current
+browser's `localStorage` under `ses_api_url` and `ses_api_key`.
 
-First, run the development server:
+## Local validation
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+From the repository root:
+
+```powershell
+npm ci --prefix portal
+npm --prefix portal run lint
+npm --prefix portal run build
+npm --prefix portal run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://127.0.0.1:3000/settings`, enter the Gateway URL and a rotated
+administrator key, then use **Test Connection**. That check calls both the
+public health endpoint and the administrator analytics endpoint, so it
+validates connectivity and privileges.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The default Gateway URL is `http://localhost:8000`. A non-secret alternative
+can be embedded at build time with `NEXT_PUBLIC_SES_API_URL`; never place an API
+key in a `NEXT_PUBLIC_` variable.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Implemented routes
 
-## Learn More
+- `/dashboard`: persisted analytics and service health.
+- `/search`: semantic search, answer generation, actual Rust-path status, and
+  evidence PDF export.
+- `/documents`: file ingestion, document listing, and deletion.
+- `/keys`: administrator key creation, one-time display, and revocation.
+- `/analytics`: persisted request aggregates and recent-log timeline.
+- `/reports`: usage and health PDF downloads.
+- `/settings`: browser-local Gateway configuration.
 
-To learn more about Next.js, take a look at the following resources:
+## Operational boundary
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`npm run build` proves the frontend compiles and prerenders. Full feature
+validation also requires the Gateway plus its configured Qdrant, Redis, and
+Ollama dependencies. A degraded or unavailable backend is surfaced by the
+individual pages; it is not replaced with sample data.
