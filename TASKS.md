@@ -7,6 +7,7 @@ when implementation and validation evidence exist.
 
 - [x] Integrate the SES agent rules at the repository root.
 - [x] Ignore and rotate local Gateway and agent signing secrets.
+- [x] Cover development caches, local databases, generated artifacts, models, and common credential formats in the root `.gitignore`.
 - [x] Remove the known default Gateway administrator key.
 - [x] Make production rate limiting fail closed.
 - [x] Restrict Gateway CORS to configured origins.
@@ -21,6 +22,7 @@ when implementation and validation evidence exist.
 ## P2 - Productization
 
 - [x] Complete the `portal/` client contract and validate lint/build/runtime routes.
-- [ ] Align README and ROADMAP claims with validated runtime behavior.
+- [x] Align README, Gateway, Mount Mode, ROADMAP, and TASKS claims with validated runtime behavior.
 - [x] Package the Rust extension as a CPython wheel and add Rust/Python integration tests.
+- [x] Configure and validate CI plus a non-publishing manual package workflow.
 - [ ] Run named ingestion and retrieval workloads before publishing scale claims.

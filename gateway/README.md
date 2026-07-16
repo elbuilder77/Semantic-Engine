@@ -1,117 +1,122 @@
-# 🌐 SES Enterprise Gateway
+# SES Gateway
 
-**SES Enterprise Gateway** es la capa comercial, segura y escalable que envuelve a **SES Core** para transformarlo en un producto de nivel empresarial y monetizable (SaaS o Despliegues On-Premise administrados). 
+El Gateway es la capa FastAPI de SES Core. Expone búsqueda, ingestión,
+documentos, salud, llaves administrativas, analítica y reportes PDF. También
+sirve un dashboard estático en la ruta raíz.
 
-Esta capa está diseñada para operar como un servicio satélite del motor RAG, manteniendo el núcleo algorítmico inmutable y agregando controles críticos de seguridad, multi-tenancy, rate limiting y telemetría de facturación.
+Su estado actual es beta: los contratos y controles principales están
+implementados y cubiertos por pruebas, pero todavía faltan pruebas end-to-end
+con Qdrant, Redis y Ollama reales, además de paridad Docker reproducible.
 
----
+## Arquitectura
 
-## 🎨 Características Comerciales (Monetización)
+~~~text
+Cliente / Portal
+      |
+      v
+FastAPI Gateway
+  |      |       |
+  v      v       v
+Qdrant  Redis   Ollama
+  |
+SQLite local para llaves y telemetría
+~~~
 
-1. **Aislamiento Multi-Tenant (Namespaces)**:
-   - Los clientes se autentican mediante tokens y quedan aislados estrictamente en sus respectivos namespaces vectoriales de Qdrant. No existe comunicación cruzada de documentos.
-2. **Control de Acceso basado en Roles (RBAC)**:
-   - **Admin**: Control total sobre el Gateway, generación de tokens, visualización de logs de tráfico global y auditoría.
-   - **Client**: Acceso restringido únicamente a operaciones de RAG (búsqueda e ingestión) sobre su propio espacio de nombres asignado.
-3. **Control de Cuotas y Rate Limiting (Redis)**:
-   - Limita las peticiones por minuto (RPM) de forma granular por cada cliente para proteger la infraestructura offline de sobrecargas de inferencia en CPU/GPU.
-4. **Telemetría para Facturación (Consumption Billing)**:
-   - Registra contadores agregados por cliente (número de búsquedas, ingestión de documentos y latencias promedio) para habilitar esquemas de cobro por uso.
-5. **Dashboard de Operaciones (Developer Portal)**:
-   - Una interfaz web interactiva y moderna que permite a los desarrolladores y administradores vigilar la salud del sistema, interactuar con el Playground de RAG, administrar tokens de acceso y subir archivos.
+El aislamiento lógico usa el namespace asociado a cada llave. Este repositorio
+no demuestra todavía aislamiento de infraestructura por cliente, RBAC
+corporativo completo, facturación comercial ni SLAs.
 
----
+## Seguridad comprobada
 
-## 🏗️ Arquitectura de Servicios
+- <code>GATEWAY_ADMIN_KEY</code> es obligatorio y no tiene valor conocido por
+  defecto.
+- Las llaves creadas se muestran una sola vez y se almacenan como hashes.
+- CORS se restringe mediante <code>GATEWAY_CORS_ORIGINS</code>.
+- En producción, una caída de Redis hace fallar las rutas protegidas con
+  <code>503</code>; el fallback local solo existe con <code>DEBUG=true</code>.
+- <code>.env</code>, bases SQLite y llaves de firma están excluidas de Git.
 
-```text
-               ┌────────────────────────────────────────┐
-               │        SES Enterprise Gateway          │
-               │  (FastAPI REST APIs & Web Dashboard)   │
-               └────┬──────────────────┬─────────────┬──┘
-                    │                  │             │
-                    ▼                  ▼             ▼
-       ┌──────────────────┐   ┌──────────────┐  ┌──────────────────┐
-       │   Ollama (LLM)   │   │  Redis Cache │  │  Qdrant DB (RAG) │
-       │  (Offline-First) │   │ & Rate Limit │  │  (Vector Search) │
-       └──────────────────┘   └──────────────┘  └──────────────────┘
-```
+Genere secretos locales únicos:
 
-- **Backend**: FastAPI (Python) que sirve tanto la interfaz web estática como las APIs REST.
-- **Base de Datos Vectorial**: Qdrant, administrado a través de las abstracciones del core.
-- **Caché y Limitador**: Redis, usado para rate limiting dinámico y almacenamiento de contadores. En producción (`DEBUG=false`), una caída de Redis bloquea las rutas protegidas con `503` para evitar operar sin el control distribuido. El fallback en memoria existe únicamente para desarrollo explícito (`DEBUG=true`).
-
----
-
-## ⚙️ Instalación y Arranque
-
-### Requisitos Previos
-Asegúrese de tener la infraestructura base iniciada (Qdrant y Redis). Puede levantarlos usando Docker:
-```bash
-docker run -d -p 6333:6333 qdrant/qdrant
-docker run -d -p 6379:6379 redis
-```
-
-### Ejecutar el Gateway
-Genere primero secretos locales únicos. El archivo `.env` y las llaves generadas
-están excluidos de Git y los valores no se imprimen:
-
-```bash
-pip install -e .[server,security]
+~~~powershell
+python -m pip install -e ".[server,security]"
+Copy-Item .env.example .env
 python scripts/rotate_local_secrets.py
-```
+~~~
 
-Reinicie el Gateway inmediatamente después de la rotación para activar la nueva
-llave y descartar cualquier caché de autenticación del proceso anterior.
+Reinicie el Gateway después de rotar. En producción, inyecte los secretos desde
+un gestor externo y mantenga <code>DEBUG=false</code>.
 
-En producción no use el archivo local: inyecte `GATEWAY_ADMIN_KEY`,
-`GATEWAY_CORS_ORIGINS`, las credenciales de Qdrant y Redis mediante su gestor de
-secretos. `GATEWAY_ADMIN_KEY` es obligatorio, debe tener al menos 32 caracteres
-y no tiene valor predeterminado.
+## Servicios requeridos
 
-Para iniciar el servidor de desarrollo del Gateway:
-```bash
+No hay un Compose canónico en el repositorio. Para desarrollo:
+
+~~~powershell
+docker run --name ses-qdrant -p 6333:6333 -d qdrant/qdrant
+docker run --name ses-redis -p 6379:6379 -d redis:7.4-alpine
+~~~
+
+Ollama se ejecuta por separado cuando se solicita generación de respuesta.
+
+## Arranque
+
+Desde la raíz:
+
+~~~powershell
 python gateway/run.py
-```
-El servidor arrancará en `http://localhost:8000`.
+~~~
 
----
+El servidor queda en <http://127.0.0.1:8000>.
 
-## 📚 Catálogo de Endpoints (API REST)
+Todas las rutas protegidas esperan <code>X-API-Key: &lt;llave&gt;</code>.
 
-Todas las llamadas de clientes deben incluir la cabecera `X-API-Key: <token>`.
+## Contratos HTTP implementados
 
-### 1. Ingestión y Gestión Documental
-- `POST /api/v1/ingest/file`: Sube e indexa un archivo físico (PDF, DOCX, XLSX, TXT) en el espacio del cliente.
-- `POST /api/v1/ingest/text`: Indexa texto plano directamente.
-- `GET /api/v1/documents`: Lista todos los documentos indexados en el namespace asignado.
-- `DELETE /api/v1/documents/{doc_id}`: Elimina un documento por su ID del espacio vectorial.
+### RAG y documentos
 
-### 2. Recuperación y Búsqueda (RAG)
-- `POST /api/v1/search`: Realiza la búsqueda semántica acelerada en Rust, aplica re-ranking cognitivo y, opcionalmente, sintetiza una respuesta de lenguaje natural usando Ollama.
-  ```json
-  {
-    "query": "¿Cuáles son las condiciones de rescisión?",
-    "top_k": 5,
-    "threshold": 0.2,
-    "generate_answer": true
-  }
-  ```
+- <code>POST /api/v1/search</code>
+- <code>POST /api/v1/ingest/file</code>
+- <code>POST /api/v1/ingest/text</code>
+- <code>GET /api/v1/documents</code>
+- <code>DELETE /api/v1/documents/{doc_id}</code>
+- <code>GET /api/v1/stats</code>
 
-### 3. Monitoreo e Infraestructura
-- `GET /api/v1/health`: Reporte de estado del Gateway y de la conexión con Qdrant, Redis y Ollama.
-- `GET /api/v1/stats`: Obtiene estadísticas de almacenamiento vectorial del namespace activo.
+La búsqueda reporta <code>rust_accelerated</code>. La ruta Rust es opcional y
+solo se intenta cuando el wheel está instalado y Qdrant devuelve más de 50
+candidatos.
 
-### 4. Administración (Solo para tokens con rol `admin`)
-- `GET /api/v1/admin/keys`: Lista todas las llaves comerciales activas.
-- `POST /api/v1/admin/keys`: Genera un nuevo token comercial con cuotas y namespace personalizado.
-- `DELETE /api/v1/admin/keys/{key_to_delete}`: Revoca y elimina un token del sistema.
-- `GET /api/v1/admin/analytics`: Obtiene métricas agregadas del rendimiento global y logs de peticiones recientes.
+### Salud
 
----
+- <code>GET /api/v1/health</code>
 
-## 🧪 Pruebas Automatizadas
-El Gateway cuenta con una suite de pruebas unitarias y de integración que mockea el motor e inferencias pesadas para ejecutarse instantáneamente de forma aislada:
-```bash
-pytest gateway/test_gateway.py
-```
+Reporta estado del Gateway y dependencias. Un estado HTTP exitoso no implica que
+todos los servicios satélite estén disponibles; revise el cuerpo de respuesta.
+
+### Administración
+
+- <code>GET /api/v1/admin/keys</code>
+- <code>POST /api/v1/admin/keys</code>
+- <code>DELETE /api/v1/admin/keys/{key_to_delete}</code>
+- <code>GET /api/v1/admin/analytics</code>
+- <code>GET /api/v1/admin/reports/usage</code>
+- <code>GET /api/v1/admin/reports/health</code>
+- <code>POST /api/v1/reports/evidence</code>
+
+La telemetría existe, pero su persistencia bajo todos los flujos todavía es un
+pendiente P1 y no debe usarse como fuente de facturación hasta cerrar ese gate.
+
+## Portal
+
+El cliente Next.js vive en [portal/](../portal/README.md). Conserva URL y llave
+en <code>localStorage</code> del navegador y consume estos contratos sin datos
+de demostración.
+
+## Pruebas
+
+~~~powershell
+pytest -q gateway/test_gateway.py gateway/test_database.py -p no:cacheprovider
+~~~
+
+La suite mockea Qdrant, Redis y Ollama para mantener determinismo. El CI completo
+también valida el núcleo, Portal, Rust y empaquetado; las integraciones reales
+siguen separadas como gate abierto.

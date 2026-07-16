@@ -1,13 +1,13 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ses-core"
 version = "2.0.0"
-description = "Semantic Engine Core - Offline-first RAG library without internet dependencies"
+description = "Offline-first RAG engine for private, locally operated document systems"
 authors = [{name = "Julio Patron", email = "juliopc92@gmail.com"}]
-license = {text = "GPL-3.0"}
+license = "GPL-3.0-only"
 readme = "README.md"
 requires-python = ">=3.9"
 keywords = ["rag", "llm", "offline", "ai", "semantic-search", "qdrant", "ollama", "local-ai"]
@@ -15,7 +15,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -41,9 +40,9 @@ server = ["fastapi>=0.104.0", "uvicorn>=0.23.2", "fpdf2>=2.7.4", "httpx>=0.24.1"
 security = ["cryptography>=41.0.0"]
 
 [project.urls]
-Homepage = "https://github.com/JPatronC92/SES"
-Documentation = "https://github.com/JPatronC92/SES/wiki"
-Repository = "https://github.com/JPatronC92/SES.git"
+Homepage = "https://github.com/JPatronC92/Semantic-Engine"
+Documentation = "https://github.com/JPatronC92/Semantic-Engine#readme"
+Repository = "https://github.com/JPatronC92/Semantic-Engine.git"
 
 [tool.setuptools.packages.find]
 include = ["ses*"]

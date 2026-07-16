@@ -1,238 +1,259 @@
 <div align="center">
-  <h1>🧠 SES Core: Semantic Engine</h1>
-  <p><strong>An offline-first RAG library for private, locally operated AI applications.</strong></p>
-  
-  [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org)
+  <h1>SES Core: Semantic Engine</h1>
+  <p><strong>An offline-first RAG engine for private documents, with a Gateway, Portal, and optional Rust acceleration.</strong></p>
+
+  [![Python](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://www.python.org)
+  [![Status](https://img.shields.io/badge/Status-Beta-orange.svg)](#verified-status)
+  [![CI](https://github.com/JPatronC92/Semantic-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JPatronC92/Semantic-Engine/actions/workflows/ci.yml)
   [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-  [![Offline First](https://img.shields.io/badge/Runtime-Local--First-red.svg)](#)
-  
-  *Read this in [Spanish (Español)](README.md)*
+
+  *[Versión en español](README.md)*
 </div>
 
 ---
 
-## 🌟 Why SES Core?
+## What SES is
 
-If you are building **Local Artificial Intelligence** applications (with Ollama, LM Studio, or Llama.cpp) and need a RAG (*Retrieval-Augmented Generation*) engine that guarantees **zero data leaks**, you are in the right place.
+SES turns local documents into a searchable semantic index. The Python core
+extracts, chunks, embeds, and queries through Qdrant; Redis provides caching and
+distributed controls; Ollama generates local answers; the FastAPI Gateway
+exposes HTTP contracts; and the Next.js Portal provides the administration UI.
 
-Traditional libraries (LangChain, LlamaIndex) are designed with the cloud in mind (OpenAI, Pinecone), making them heavy and hard to isolate. **SES Core is born with a diametrically opposite philosophy: Offline-First.**
+Offline-first means documents and queries can stay in operator-controlled
+infrastructure. It does not mean that installation has zero network
+dependencies: packages, images, and models must be provisioned before running
+without a network.
 
-* 🔒 **Local operation:** Documents, embeddings, and queries stay in your infrastructure. Provision the embedding model locally before operating without network access.
-* ⚡ **Hybrid vector path:** Qdrant retrieves candidates and an optional Rust module can recompute similarity for large batches.
-* 📁 **Automatic Mount Mode:** Includes a *Watcher* that monitors your local folders (PDFs, DOCX, XLSX) and incrementally indexes them in the background.
-* 🧩 **Extremely Modular:** Use it in CLI scripts, desktop apps (PyQt), or as the internal engine for your own API.
-* 🚀 **Re-Ranking and Batch Search:** Advanced built-in capabilities ready for production.
+## Verified status
 
----
+This repository is a technical beta. Live code and executable validation are
+the source of truth.
 
-## ⚡ Performance Evidence
+| Surface | Verified state | Current boundary |
+|---|---|---|
+| Python core | 32 tests pass on CPython 3.12 | Real Qdrant/Redis/Ollama integration remains open |
+| Gateway | Auth, key rotation, CORS, and rate limiting are hardened | Persistent telemetry and Docker parity remain open |
+| Portal | Next.js 16; lint, build, and eight administration routes validated | Real-service E2E remains open |
+| Rust | CPython 3.12 wheel, tests, Clippy, and NumPy API | Optional and used for candidate batches larger than 50 |
+| CI | Portal, Python, Rust, wheel, Pytest, and synthetic smoke in GitHub Actions | Does not replace end-to-end testing |
+| Packaging | Python wheel and sdist build and pass Twine checks | PyPI Trusted Publisher still requires configuration |
+| Mount Mode | Scan, SHA-256, debounce, manifest, and path traceability | Changed-file reindexing is not atomic yet |
 
-The repository contains a reproducible synthetic-vector microbenchmark. It does
-not measure end-to-end Qdrant, ingestion, disk, or LLM latency.
+## Architecture
 
-| Metric | Value | Method |
-|---------|-------|--------|
-| **Python, 1,000 × 384** | `47.60 ms/search` | 3 iterations, normalized synthetic vectors |
-| **Rust/NumPy, 1,000 × 384** | `0.97 ms/search` | CPython 3.12 wheel, contiguous zero-copy ndarray |
-| **Scope** | `local microbenchmark` | Windows AMD64 (16 logical CPUs), CPython 3.12, July 15, 2026; not an SLA |
+~~~text
+Read-only documents
+        |
+        v
+Watcher / Scanner ---> Parsing and chunking ---> Local embeddings
+                                                |
+                                                v
+Next.js Portal ---> FastAPI Gateway ---> Qdrant / Redis / Ollama
+                           |
+                           +-- PDF reports
+                           +-- keys and analytics
+                           +-- optional Rust reranking
+~~~
 
-CI runs the same bounded workload as a performance smoke, without treating a
-single runner result as an SLA.
+Main directories:
 
----
+- <code>ses/</code>: RAG library, providers, reports, and watcher.
+- <code>gateway/</code>: FastAPI, static dashboard, and local SQLite state.
+- <code>portal/</code>: Next.js administration client.
+- <code>core_rs/</code>: the <code>jas_vector_core</code> PyO3 extension.
+- <code>tests/</code>: Python tests and a synthetic microbenchmark.
+- <code>ses-agent-system/</code>: repository engineering rules and SOPs.
 
-## 🔒 Privacy and Security
+## Install from source
 
-Building with SES Core means **Zero Data Leakage Guarantee**:
-- **Local Embeddings Processing:** We use `SentenceTransformers` running on your own CPU/GPU. Your documents never travel to HuggingFace servers.
-- **Isolated LLM Logic:** The `LocalLLMProvider` connects via local sockets (`localhost:11434`) to Ollama. 
-- **Metadata Filtering:** During the storage phase, any excluded text or metadata is not stored in indexed variables to prevent accidental leaks during searches.
+The currently validated route is installation from this repository. Do not
+assume that <code>pip install ses-core</code> matches <code>main</code> until a
+public release has been verified.
 
----
+~~~powershell
+git clone https://github.com/JPatronC92/Semantic-Engine.git
+cd Semantic-Engine
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev,server,security]"
+~~~
 
-## 📦 Installation
+Package metadata declares Python 3.9–3.12 compatibility; CI currently validates
+CPython 3.12.
 
-**Step 1:** Install the base library (includes Qdrant and Redis dependencies)
-```bash
-pip install ses-core
-```
+### Optional Rust extension
 
-*(Optional)* If you need to build a web API on top of SES Core, install the server dependencies (FastAPI, Uvicorn):
-```bash
-pip install ses-core[server]
-```
-
-The Rust extension is packaged as a separate wheel:
-
-```powershell
+~~~powershell
 python -m pip install "maturin>=1,<2"
 python -m maturin build --release --manifest-path core_rs/Cargo.toml --interpreter python --out core_rs/target/wheels
 $wheel = Get-ChildItem core_rs/target/wheels/*.whl | Select-Object -First 1
 python -m pip install --force-reinstall $wheel.FullName
-```
+~~~
 
----
+The Rust wheel is separate from the base Python package. SES keeps the Python
+path when the module is missing or cannot be used.
 
-## ⚙️ Configuration and Production Requirements
+## Secure configuration
 
-SES Core requires you to configure certain environment variables to work in production. You can use a `.env` file or export them in your terminal:
+Use <code>.env.example</code> as the variable inventory. Generate unique local
+keys without printing them:
 
-```env
-# DEBUG MODE (True disables password checks, ideal for local dev)
-DEBUG=True
+~~~powershell
+Copy-Item .env.example .env
+python scripts/rotate_local_secrets.py
+~~~
 
-# QDRANT (Mandatory in production for vector persistence)
-QDRANT_URL=http://localhost:6333
-QDRANT_API_KEY=your_secret_api_key
+The command rotates:
 
-# REDIS (Mandatory for async caching and rate limiting in production)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your_secret_password
-```
+- <code>GATEWAY_ADMIN_KEY</code> in <code>.env</code>;
+- the Ed25519 pair in <code>ses-agent-system/keys.json</code>;
+- previous local administrative SQLite keys when present.
 
-**Important Note:** If `DEBUG=True`, SES will attempt to connect to local Qdrant and Redis instances without a password.
+Both secret files and local databases are ignored by Git. In production, use a
+secret manager, keep <code>DEBUG=false</code>, and configure non-placeholder
+Qdrant and Redis credentials. A Redis outage blocks protected production routes;
+the in-memory fallback exists only with <code>DEBUG=true</code>.
 
----
+The Portal stores the Gateway URL and key in browser <code>localStorage</code>.
+Never place an API key in a <code>NEXT_PUBLIC_*</code> variable.
 
-## 💻 Quickstart
+## Local services
 
-Build a knowledge application in 3 steps:
+The repository does not yet contain a reviewed Compose stack. For development,
+Qdrant and Redis can be started explicitly:
 
-### 1. Prerequisites and Initialization
+~~~powershell
+docker run --name ses-qdrant -p 6333:6333 -d qdrant/qdrant
+docker run --name ses-redis -p 6379:6379 -d redis:7.4-alpine
+~~~
 
-**Important!** Although SES Core is 100% offline and does not call cloud APIs, the library delegates vector storage and rate limiting to highly optimized services. **You must have Qdrant, Redis, and [Ollama](https://ollama.com/) running locally.**
+Ollama must run separately with the model named by <code>OLLAMA_MODEL</code>.
+The SentenceTransformers embedding model must also be provisioned locally
+before network-free operation.
 
-Example using Docker to start the required infrastructure:
-```bash
-docker run -d -p 6333:6333 qdrant/qdrant
-docker run -d -p 6379:6379 redis
-```
+## Run the Gateway and Portal
 
-Then, you can start your Python application:
+Gateway:
 
-```python
+~~~powershell
+python gateway/run.py
+~~~
+
+The Gateway listens on <http://127.0.0.1:8000>. Main routes include:
+
+- <code>POST /api/v1/search</code>
+- <code>POST /api/v1/ingest/file</code>
+- <code>POST /api/v1/ingest/text</code>
+- <code>GET /api/v1/documents</code>
+- <code>DELETE /api/v1/documents/{doc_id}</code>
+- <code>GET /api/v1/health</code> and <code>/api/v1/stats</code>
+- key, analytics, and report administration under <code>/api/v1/admin</code>
+
+Portal:
+
+~~~powershell
+npm ci --prefix portal
+npm --prefix portal run dev -- --hostname 127.0.0.1 --port 3000
+~~~
+
+Open <http://127.0.0.1:3000/settings>, enter the Gateway URL and a rotated
+administrator key, and use **Test Connection**. Implemented routes are
+<code>/dashboard</code>, <code>/search</code>, <code>/documents</code>,
+<code>/keys</code>, <code>/analytics</code>, <code>/reports</code>, and
+<code>/settings</code>.
+
+## Direct library usage
+
+~~~python
 import asyncio
-from ses.core.rag import OfflineRAGEngine
+
 from ses.core.llm import LocalLLMProvider
+from ses.core.rag import OfflineRAGEngine
+
 
 async def main():
-    # Initialize the local vector engine (Qdrant + Redis caching)
     engine = OfflineRAGEngine()
-    
-    # Initialize the connection with Ollama (100% offline)
-    llm = LocalLLMProvider(model_override="llama3")
-```
 
-### 2. "Drop-in" Document Indexing
-
-SES Core supports automatic extraction of `PDF`, `DOCX`, `TXT`, and `XLSX`.
-
-```python
-    # Ingest a confidential document
-    with open("confidential_contract.pdf", "rb") as f:
-        result = await engine.ingest_file(
-            namespace="legal", 
-            file_obj=f, 
-            filename="confidential_contract.pdf", 
-            metadata={"author": "Lawyer"}
+    with open("contract.pdf", "rb") as source:
+        await engine.ingest_file(
+            namespace="legal",
+            file_obj=source,
+            filename="contract.pdf",
+            metadata={"source_path": "contract.pdf"},
         )
-    print(f"Successfully indexed: {result['chunks_count']} semantic chunks.")
-```
 
-### 3. Search and Answer Generation
-
-```python
-    # Retrieve the chunks with the highest cosine similarity
-    results = await engine.search(
-        namespace="legal", 
-        query="What are the termination clauses of the contract?"
+    search = await engine.search(
+        namespace="legal",
+        query="What are the termination conditions?",
+        top_k=5,
     )
 
-    # Generate a synthetic answer using the local AI
-    answer = llm.generate_answer(
-        query="Explain the termination clauses based on the document.", 
-        context_docs=results["results"]
+    answer = LocalLLMProvider().generate_answer(
+        query="Summarize the termination conditions.",
+        context_docs=search["results"],
     )
-
     print(answer)
 
-if __name__ == "__main__":
-    asyncio.run(main())
-```
 
----
+asyncio.run(main())
+~~~
 
-## 🏗️ Architecture and Advanced Components
+## Mount Mode
 
-SES Core is highly hackable and includes Enterprise features out of the box:
-- **PDF Report Generation:** Use `ses.core.reports` to export analytics.
-- **Cognitive Re-Ranking:** Score re-evaluation in the `rag.py` engine.
-- **TTL Caching:** Method-level caching (Redis) for instant responses.
+The watcher treats observed directories as read-only sources. It performs an
+initial scan, filters PDF/DOCX/XLSX/CSV/TXT/MD files, calculates SHA-256, stores
+<code>source_path</code>, and skips insertion when content is unchanged.
+Filesystem events are grouped with per-path debounce.
 
-```text
-ses/
-├── core/
-│   ├── parsers.py       # Extraction algorithms (PDF, DOCX, XLSX, TXT)
-│   ├── chunking.py      # Smart semantic segmentation
-│   ├── embeddings.py    # Local HuggingFace models wrapper
-│   ├── vector_store.py  # Async abstraction (Qdrant)
-│   ├── llm.py           # Offline providers (Ollama)
-│   ├── reports.py       # Advanced PDF report generation
-│   └── rag.py           # Main orchestrator with Re-ranking
-├── watcher/
-│   └── monitor.py       # File system observability (Watchdog)
-└── config.py            # Static environment variables and secret management
-```
+Replacing a changed file currently deletes the previous indexed version before
+the new ingestion finishes. The manifest makes recovery possible, but the
+operation is not atomic yet. See [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md).
 
----
+## Validation
 
-## 📚 Additional Documentation
+Local gates corresponding to CI:
 
-### Agent execution rules
+~~~powershell
+pytest -q -p no:cacheprovider
+npm --prefix portal run lint
+npm --prefix portal run build
+cargo fmt --manifest-path core_rs/Cargo.toml -- --check
+cargo test --manifest-path core_rs/Cargo.toml
+cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
+~~~
 
-Repository-wide operating rules live in [`AGENTS.md`](AGENTS.md), validated work
-is tracked in [`TASKS.md`](TASKS.md), and SES-specific SOPs live under
-[`ses-agent-system/`](ses-agent-system/README.md). These files govern engineering
-work; they are not a standalone multi-agent runtime.
+[GitHub Actions](https://github.com/JPatronC92/Semantic-Engine/actions) also
+builds and installs the CPython 3.12 Rust wheel. The manual packaging workflow
+builds and verifies the sdist/wheel but skips publication. Only a published
+GitHub Release can activate the PyPI OIDC job.
 
-Generate and rotate ignored local Gateway and signing secrets with:
+The microbenchmark in <code>tests/performance/benchmark.py</code> uses synthetic
+vectors. It is a reproducible smoke, not end-to-end ingestion, disk, Qdrant, or
+LLM latency, and its numbers are not an SLA.
 
-```bash
-pip install -e .[server,security]
-python scripts/rotate_local_secrets.py
-```
+## Production gaps
 
-The command never prints secret values. Production deployments must inject
-equivalent values through a secret manager.
+- No reproducible Compose stack or proven local/Docker parity.
+- Real SQLite, Qdrant, Redis, and Ollama failure-path tests remain open.
+- Persistent Gateway telemetry still needs hardening.
+- No named 40–60 GB ingestion/retrieval workload has been executed.
+- Changed-file reindexing is not atomic.
+- PyPI Trusted Publishing and a public release remain pending.
+- The repository does not prove corporate SLAs, complete RBAC, or HIPAA/GDPR
+  certification.
 
-### Web portal
+## Documentation and rules
 
-The administration frontend under [`portal/`](portal/README.md) consumes the
-live Gateway contracts and stores its URL/key only in the browser. Its minimum
-gate is `npm ci --prefix portal`, `npm --prefix portal run lint`, and
-`npm --prefix portal run build`.
+- [AGENTS.md](AGENTS.md): canonical execution rules.
+- [ROADMAP.md](ROADMAP.md): product phases and gates.
+- [TASKS.md](TASKS.md): gaps confirmed against live code.
+- [gateway/README.md](gateway/README.md): Gateway operation and contracts.
+- [portal/README.md](portal/README.md): Portal routes and validation.
+- [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md): watcher contract and limits.
 
-### GitHub Actions automation
+## License
 
-[`ci.yml`](.github/workflows/ci.yml) validates the portal, Python code, and Rust
-wheel on every push/PR to `main`, and supports manual runs. It uses read-only
-permissions and cancels superseded runs for the same branch.
-
-[`publish.yml`](.github/workflows/publish.yml) always builds and verifies the
-distribution artifacts. A manual run **does not publish**; PyPI publication is
-only enabled for a published GitHub Release and requires a PyPI Trusted
-Publisher configured for the `pypi` environment.
-
-For more complex integrations, step-by-step deployment guides, and internal API documentation, please visit our [Official GitHub Wiki](https://github.com/JPatronC92/SES/wiki).
-
----
-
-## 📈 Monetization and Enterprise
-
-SES operates under an **Open Core** model. 
-This library (`ses-core`) represents our "Tier 1" and will always be **free, open-source, and tracking-free** (GPLv3) for the local AI developer community.
-
-Managed SaaS, on-premise RBAC, SLAs, and regulated-industry compliance remain
-productization targets; this repository alone is not evidence of HIPAA or GDPR
-certification.
+SES Core is distributed under GPLv3. Managed offerings, SLAs, and regulatory
+certifications are future commercial objectives, not properties demonstrated
+by the current repository state.

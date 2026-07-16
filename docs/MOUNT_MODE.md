@@ -26,9 +26,10 @@ Disco original (Solo lectura) ➔ Inventario recursivo ➔ Extracción de texto 
 
 ---
 
-## ⚡ 3. Responsabilidades del Filesystem Connector
+## ⚡ 3. Contrato objetivo del Filesystem Connector
 
-Un conector de archivos corporativo de nivel producción debe cumplir estrictamente con las siguientes especificaciones:
+Las siguientes responsabilidades definen el objetivo de producción. El estado
+real de cada una se resume al final de este documento:
 
 * **Lectura No Invasiva**: Operar estrictamente bajo permisos de solo lectura sobre las carpetas montadas.
 * **Descubrimiento Inteligente**: Rastrear de forma recursiva toda la estructura de directorios y subdirectorios.
@@ -81,9 +82,37 @@ La validación del sistema va más allá de asegurar que la API retorne resultad
 
 ---
 
-## 🚀 Estado de Implementación en la Rama Main
+## 🚀 Estado de Implementación en `main`
 
-La arquitectura base del **Mount Mode** está completamente consolidada en la rama estable:
-* **Escaneo y Monitoreo Activo**: El watcher en segundo plano (`WATCH_DIRECTORIES`) monitorea de forma incremental carpetas físicas locales usando `watchdog` y realiza encolamiento con debounce asíncrono.
-* **Extracción Multi-Formato**: Soporte maduro para PDF, DOCX, CSV y TXT estructurado.
-* **Indexación y RAG Trazable**: Endpoints listos para ingestión programática, búsqueda conceptual, síntesis de respuestas con atribución detallada de fuentes corporativas y exportación de reportes PDF homologados.
+### Implementado y cubierto por pruebas
+
+* **Fuentes de solo lectura**: el scanner abre los archivos para lectura y no
+  modifica, mueve ni elimina los originales.
+* **Escaneo recursivo**: descubre PDF, DOCX, XLSX, CSV, TXT y MD.
+* **Identidad de versión**: calcula SHA-256 y omite contenido sin cambios.
+* **Monitoreo incremental**: `watchdog` agrupa eventos por ruta mediante
+  debounce antes de ingerir.
+* **Manifiesto local**: persiste hash, `document_id`, nombre y `source_path`
+  con reemplazo atómico del archivo JSON del manifiesto.
+* **Trazabilidad básica**: cada ingestión del watcher incluye la ruta absoluta
+  del archivo original.
+
+### Límites todavía abiertos
+
+* **Reindexado no atómico**: al cambiar un archivo, el índice anterior se
+  elimina antes de confirmar la nueva ingestión. Un fallo intermedio puede dejar
+  temporalmente el documento sin versión indexada.
+* **Sin benchmark de volumen real**: las etapas de 500 MB a 60 GB anteriores
+  son un protocolo propuesto; todavía no existe evidencia publicada de esas
+  cargas.
+* **Sin conectores de red validados**: SMB/CIFS, NAS y SAN forman parte del
+  objetivo, pero el código actual opera sobre rutas que el sistema operativo ya
+  expone como directorios.
+* **Checkpoint limitado**: el manifiesto registra estado por archivo, no avance
+  interno de extracción, embeddings o lotes Qdrant.
+* **Paridad operativa pendiente**: no hay un Compose canónico ni pruebas
+  end-to-end con Qdrant, Redis y Ollama reales.
+
+Por estas razones, Mount Mode es funcional para desarrollo y validación local,
+pero aún no debe describirse como consolidado para repositorios corporativos de
+40–60 GB.

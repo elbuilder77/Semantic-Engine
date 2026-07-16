@@ -1,252 +1,262 @@
 <div align="center">
-  <h1>🧠 SES Core: Semantic Engine</h1>
-  <p><strong>La librería RAG definitiva para aplicaciones de Inteligencia Artificial 100% Offline y Privadas.</strong></p>
-  
-  [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org)
-  [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-  [![Offline First](https://img.shields.io/badge/Network-0%20Dependencies-red.svg)](#)
-  
-  [![SES Core](https://img.shields.io/badge/🧠_SES_CORE-SEMANTIC_ENGINE-00D9FF?style=for-the-badge&labelColor=0F1B3C)](https://github.com/JPatronC92/SES)
-  
-  *Read this in [English](README_en.md)*
+  <h1>SES Core: Semantic Engine</h1>
+  <p><strong>Motor RAG offline-first para documentos privados, con Gateway, Portal y aceleración Rust opcional.</strong></p>
+
+  [![Python](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://www.python.org)
+  [![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](#estado-verificado)
+  [![CI](https://github.com/JPatronC92/Semantic-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JPatronC92/Semantic-Engine/actions/workflows/ci.yml)
+  [![Licencia](https://img.shields.io/badge/Licencia-GPLv3-blue.svg)](LICENSE)
+
+  *[English version](README_en.md)*
 </div>
 
 ---
 
-## 🌟 ¿Por qué SES Core?
+## Qué es SES
 
-Si estás construyendo aplicaciones de **Inteligencia Artificial Local** (con Ollama, LM Studio o Llama.cpp) y necesitas un motor RAG (*Retrieval-Augmented Generation*) que garantice **cero fugas [...]
+SES convierte documentos locales en un índice semántico consultable. El núcleo
+Python extrae, segmenta, genera embeddings y consulta Qdrant; Redis aporta caché
+y control distribuido; Ollama genera respuestas locales; el Gateway FastAPI
+expone los contratos HTTP y el Portal Next.js ofrece la superficie
+administrativa.
 
-Las librerías tradicionales (LangChain, LlamaIndex) están diseñadas pensando en la nube (OpenAI, Pinecone), haciéndolas pesadas y difíciles de aislar. **SES Core nace con una filosofía diame[...]
+Offline-first significa que los documentos y consultas pueden permanecer en la
+infraestructura del operador. No significa cero dependencias de red durante la
+instalación: paquetes, imágenes y modelos deben aprovisionarse antes de operar
+sin conexión.
 
-* 🔒 **Operación local:** Los documentos, embeddings y consultas permanecen en tu infraestructura. El modelo de embeddings debe aprovisionarse localmente antes de operar sin red.
-* ⚡ **Ruta vectorial híbrida:** Qdrant realiza la recuperación y un módulo Rust opcional puede recalcular similitud sobre lotes grandes.
-* 📁 **Mount Mode Automático:** Incluye un *Watcher* que vigila tus carpetas locales (PDFs, DOCX, XLSX) y las indexa incrementalmente en segundo plano.
-* 🧩 **Extremadamente Modular:** Úsala en scripts de CLI, aplicaciones de escritorio (PyQt) o como el motor interno de tu propia API.
-* 🚀 **Re-Ranking y Batch Search:** Capacidades avanzadas integradas listas para producción.
+## Estado verificado
 
----
+Este repositorio está en beta técnica. El código y la validación ejecutable son
+la fuente de verdad.
 
-## 🚀 Benchmarks de Rendimiento
+| Superficie | Estado comprobado | Límite actual |
+|---|---|---|
+| Núcleo Python | 32 pruebas pasan con CPython 3.12 | Integración real Qdrant/Redis/Ollama pendiente |
+| Gateway | Auth, rotación de llaves, CORS y rate limiting endurecidos | Telemetría persistente y paridad Docker pendientes |
+| Portal | Next.js 16; lint, build y ocho rutas administrativas validadas | E2E contra servicios reales pendiente |
+| Rust | Wheel CPython 3.12, pruebas, Clippy y API NumPy | Es opcional y se activa en lotes de más de 50 candidatos |
+| CI | Portal, Python, Rust, wheel, Pytest y smoke sintético en GitHub Actions | No sustituye pruebas end-to-end |
+| Publicación | Wheel y sdist Python se construyen y pasan Twine | PyPI Trusted Publisher aún debe configurarse |
+| Mount Mode | Escaneo, SHA-256, debounce, manifiesto y trazabilidad por ruta | Reindexado de cambios aún no es atómico |
 
-El repositorio incluye un microbenchmark reproducible de vectores sintéticos. No
-representa latencia end-to-end de Qdrant, ingestión, disco ni generación LLM.
+## Arquitectura
 
-| Operación | Rendimiento Promedio | Notas |
-|-----------|----------------------|-------|
-| **Python, 1,000 × 384** | `47.60 ms/búsqueda` | 3 iteraciones, vectores sintéticos normalizados. |
-| **Rust/NumPy, 1,000 × 384** | `0.97 ms/búsqueda` | Wheel CPython 3.12, ndarray contiguo sin copia. |
-| **Alcance** | `microbenchmark local` | Windows AMD64 (16 CPU lógicas), CPython 3.12, 15-jul-2026; no es un SLA. |
+~~~text
+Documentos de solo lectura
+        |
+        v
+Watcher / Scanner ---> Parser y chunking ---> Embeddings locales
+                                                |
+                                                v
+Portal Next.js ---> Gateway FastAPI ---> Qdrant / Redis / Ollama
+                            |
+                            +-- reportes PDF
+                            +-- llaves y analítica
+                            +-- reranking Rust opcional
+~~~
 
-Comando equivalente:
+Directorios principales:
 
-```powershell
-python -c "import sys; sys.path.insert(0, 'tests/performance'); import benchmark; benchmark.benchmark_search(num_documents=1000, dimensions=384, top_k=10, iterations=3)"
-```
+- <code>ses/</code>: librería RAG, proveedores, reportes y watcher.
+- <code>gateway/</code>: API FastAPI, dashboard estático y SQLite local.
+- <code>portal/</code>: cliente administrativo Next.js.
+- <code>core_rs/</code>: extensión PyO3 <code>jas_vector_core</code>.
+- <code>tests/</code>: pruebas Python y microbenchmark sintético.
+- <code>ses-agent-system/</code>: reglas y SOP de ingeniería del repositorio.
 
----
+## Instalación desde el código fuente
 
-## 🔒 Privacidad y Seguridad
+La ruta validada actualmente es instalar desde este repositorio. No se debe
+asumir que <code>pip install ses-core</code> corresponde al código de
+<code>main</code> hasta completar una publicación pública verificada.
 
-Construir con SES Core significa **Garantía de Cero Fugas (Zero Data Leakage)**:
-- **Procesamiento de Embeddings Local:** Utilizamos `SentenceTransformers` ejecutándose en tu propia CPU/GPU. Tus documentos nunca viajan a servidores de HuggingFace.
-- **Lógica LLM Aislada:** El `LocalLLMProvider` se conecta mediante sockets locales (`localhost:11434`) a Ollama. 
-- **Filtrado de Metadatos:** En fase de almacenamiento, todo texto o metadato excluido no se almacena en variables indexadas para prevenir fugas accidentales durante búsquedas.
+~~~powershell
+git clone https://github.com/JPatronC92/Semantic-Engine.git
+cd Semantic-Engine
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev,server,security]"
+~~~
 
----
+El paquete base declara compatibilidad Python 3.9–3.12; CI valida hoy CPython
+3.12.
 
-## 📦 Instalación
+### Extensión Rust opcional
 
-**Paso 1:** Instalar la librería base (incluye dependencias de Qdrant y Redis)
-```bash
-pip install ses-core
-```
-
-*(Opcional)* Si necesitas construir una API web encima de SES Core, instala las dependencias de servidor (FastAPI, Uvicorn):
-```bash
-pip install ses-core[server]
-```
-
-El módulo Rust se distribuye como wheel independiente y no forma parte del
-paquete Python base:
-
-```powershell
+~~~powershell
 python -m pip install "maturin>=1,<2"
 python -m maturin build --release --manifest-path core_rs/Cargo.toml --interpreter python --out core_rs/target/wheels
 $wheel = Get-ChildItem core_rs/target/wheels/*.whl | Select-Object -First 1
 python -m pip install --force-reinstall $wheel.FullName
-```
+~~~
 
----
+El wheel Rust es independiente del paquete Python base. SES conserva la ruta
+Python cuando el módulo no está instalado o no puede usarse.
 
-## ⚙️ Configuración y Requisitos de Producción
+## Configuración segura
 
-SES Core requiere que configures ciertas variables de entorno para funcionar en producción. Puedes usar un archivo `.env` o exportarlas en tu terminal:
+Use <code>.env.example</code> como inventario de variables. Para desarrollo
+local, genere llaves únicas sin imprimirlas:
 
-```env
-# MODO DEBUG (True deshabilita verificaciones de contraseñas, ideal para dev local)
-DEBUG=True
+~~~powershell
+Copy-Item .env.example .env
+python scripts/rotate_local_secrets.py
+~~~
 
-# QDRANT (Obligatorio en producción para persistencia de vectores)
-QDRANT_URL=http://localhost:6333
-QDRANT_API_KEY=tu_api_key_secreta
+El comando rota:
 
-# REDIS (Obligatorio para caching asíncrono y rate limiting en producción)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=tu_password_secreto
-```
+- <code>GATEWAY_ADMIN_KEY</code> en <code>.env</code>;
+- el par Ed25519 en <code>ses-agent-system/keys.json</code>;
+- llaves administrativas locales anteriores en SQLite, cuando existen.
 
-**Nota Importante:** Si `DEBUG=True`, SES intentará conectarse a instancias locales de Qdrant y Redis sin contraseña.
+Ambos archivos de secretos y las bases locales están ignorados por Git. En
+producción use un gestor de secretos, mantenga <code>DEBUG=false</code> y
+configure credenciales no triviales para Qdrant y Redis. La caída de Redis en
+producción bloquea las rutas protegidas; el fallback en memoria existe solo con
+<code>DEBUG=true</code>.
 
----
+El Portal guarda URL y llave del Gateway en <code>localStorage</code> del
+navegador. No coloque una llave en variables <code>NEXT_PUBLIC_*</code>.
 
-## 💻 Guía Rápida (Quickstart)
+## Servicios locales
 
-Construir una aplicación de conocimiento en 3 pasos:
+No existe todavía un Compose revisado en el repositorio. Para desarrollo pueden
+levantarse Qdrant y Redis explícitamente:
 
-### 1. Requisitos Previos e Inicialización
+~~~powershell
+docker run --name ses-qdrant -p 6333:6333 -d qdrant/qdrant
+docker run --name ses-redis -p 6379:6379 -d redis:7.4-alpine
+~~~
 
-**¡Importante!** Aunque SES Core es 100% offline y no llama a APIs en la nube, la librería delega el almacenamiento vectorial y el rate limiting en servicios altamente optimizados. **Debes tener[...]
+Ollama debe ejecutarse por separado y tener aprovisionado el modelo configurado
+en <code>OLLAMA_MODEL</code>. El modelo de embeddings de SentenceTransformers
+también debe estar disponible localmente antes de una operación sin red.
 
-Ejemplo con Docker para arrancar la infraestructura requerida:
-```bash
-docker run -d -p 6333:6333 qdrant/qdrant
-docker run -d -p 6379:6379 redis
-```
+## Ejecutar Gateway y Portal
 
-Luego, puedes iniciar tu aplicación de Python:
+Gateway:
 
-```python
+~~~powershell
+python gateway/run.py
+~~~
+
+El Gateway queda en <http://127.0.0.1:8000>. Sus rutas principales son:
+
+- <code>POST /api/v1/search</code>
+- <code>POST /api/v1/ingest/file</code>
+- <code>POST /api/v1/ingest/text</code>
+- <code>GET /api/v1/documents</code>
+- <code>DELETE /api/v1/documents/{doc_id}</code>
+- <code>GET /api/v1/health</code> y <code>/api/v1/stats</code>
+- administración de llaves, analítica y reportes bajo <code>/api/v1/admin</code>
+
+Portal:
+
+~~~powershell
+npm ci --prefix portal
+npm --prefix portal run dev -- --hostname 127.0.0.1 --port 3000
+~~~
+
+Abra <http://127.0.0.1:3000/settings>, capture la URL y una llave administrativa
+rotada, y use **Test Connection**. Las rutas implementadas son
+<code>/dashboard</code>, <code>/search</code>, <code>/documents</code>,
+<code>/keys</code>, <code>/analytics</code>, <code>/reports</code> y
+<code>/settings</code>.
+
+## Uso directo de la librería
+
+~~~python
 import asyncio
-from ses.core.rag import OfflineRAGEngine
+
 from ses.core.llm import LocalLLMProvider
+from ses.core.rag import OfflineRAGEngine
+
 
 async def main():
-    # Inicializa el motor vectorial local (Qdrant + Redis caching)
     engine = OfflineRAGEngine()
-    
-    # Inicializa la conexión con Ollama (100% offline)
-    llm = LocalLLMProvider(model_override="llama3")
-```
 
-### 2. Indexación "Drop-in" de Documentos
-
-SES Core soporta extracción automática de `PDF`, `DOCX`, `TXT` y `XLSX`.
-
-```python
-    # Ingestar un documento confidencial
-    with open("contrato_confidencial.pdf", "rb") as f:
-        resultado = await engine.ingest_file(
-            namespace="legal", 
-            file_obj=f, 
-            filename="contrato_confidencial.pdf", 
-            metadata={"autor": "Abogado"}
+    with open("contrato.pdf", "rb") as source:
+        await engine.ingest_file(
+            namespace="legal",
+            file_obj=source,
+            filename="contrato.pdf",
+            metadata={"source_path": "contrato.pdf"},
         )
-    print(f"Indexado exitosamente: {resultado['chunks_count']} fragmentos semánticos.")
-```
 
-### 3. Búsqueda y Generación de Respuestas
-
-```python
-    # Recupera los fragmentos con mayor similitud de coseno
-    resultados = await engine.search(
-        namespace="legal", 
-        query="¿Cuáles son las cláusulas de rescisión del contrato?"
+    search = await engine.search(
+        namespace="legal",
+        query="¿Cuáles son las condiciones de rescisión?",
+        top_k=5,
     )
 
-    # Genera una respuesta sintética usando la IA local
-    respuesta = llm.generate_answer(
-        query="Explica las cláusulas de rescisión en base al documento.", 
-        context_docs=resultados["results"]
+    answer = LocalLLMProvider().generate_answer(
+        query="Resume las condiciones de rescisión.",
+        context_docs=search["results"],
     )
+    print(answer)
 
-    print(respuesta)
 
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+asyncio.run(main())
+~~~
 
----
+## Mount Mode
 
-## 🏗️ Arquitectura y Componentes Avanzados
+El watcher trata las carpetas observadas como fuentes de solo lectura. Realiza
+un escaneo inicial, filtra PDF/DOCX/XLSX/CSV/TXT/MD, calcula SHA-256, guarda
+<code>source_path</code> y evita reinserciones cuando el contenido no cambió.
+Los eventos se agrupan mediante debounce.
 
-SES Core es altamente hackeable e incluye características Enterprise de fábrica:
-- **PDF Report Generation:** Usa `ses.core.reports` para exportar analíticas.
-- **Cognitive Re-Ranking:** Reevaluación de scores en el motor `rag.py`.
-- **TTL Caching:** Caché a nivel de método (Redis) para respuestas instantáneas.
+La sustitución de un archivo cambiado elimina actualmente la versión previa
+antes de completar la nueva ingestión. Por ello el flujo es recuperable por
+manifiesto, pero todavía no es una transacción atómica. Consulte
+[docs/MOUNT_MODE.md](docs/MOUNT_MODE.md).
 
-```text
-ses/
-├── core/
-│   ├── parsers.py       # Algoritmos de extracción (PDF, DOCX, XLSX, TXT)
-│   ├── chunking.py      # Segmentación semántica inteligente
-│   ├── embeddings.py    # Envoltura de modelos HuggingFace locales
-│   ├── vector_store.py  # Abstracción asíncrona (Qdrant)
-│   ├── llm.py           # Proveedores sin conexión (Ollama)
-│   ├── reports.py       # Generación de reportes PDF avanzados
-│   └── rag.py           # El orquestador principal con Re-ranking
-├── watcher/
-│   └── monitor.py       # Observabilidad de sistemas de archivos (Watchdog)
-└── config.py            # Variables de entorno estáticas y secret management
-```
+## Validación
 
----
+Gates locales equivalentes a CI:
 
-## 📚 Documentación Adicional
-
-### Reglas de ejecución para agentes
-
-El repositorio integra reglas operativas en [`AGENTS.md`](AGENTS.md), una lista
-de trabajo verificable en [`TASKS.md`](TASKS.md) y ocho SOP especializados bajo
-[`ses-agent-system/`](ses-agent-system/README.md). Estas reglas no constituyen un
-runtime multiagente: gobiernan cómo inspeccionar, modificar y validar el producto.
-
-Para preparar un entorno local seguro del Gateway y rotar las llaves de firma del
-sistema de agentes:
-
-```bash
-pip install -e .[server,security]
-python scripts/rotate_local_secrets.py
-```
-
-Los valores generados permanecen en `.env` y `ses-agent-system/keys.json`; ambos
-están excluidos de Git y el comando nunca imprime los secretos.
-
-### Portal web
-
-El frontend administrativo en [`portal/`](portal/README.md) consume los
-contratos reales del Gateway y conserva URL/llave únicamente en el navegador.
-Su gate mínimo es:
-
-```powershell
-npm ci --prefix portal
+~~~powershell
+pytest -q -p no:cacheprovider
 npm --prefix portal run lint
 npm --prefix portal run build
-```
+cargo fmt --manifest-path core_rs/Cargo.toml -- --check
+cargo test --manifest-path core_rs/Cargo.toml
+cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
+~~~
 
-### Automatización en GitHub Actions
+[GitHub Actions](https://github.com/JPatronC92/Semantic-Engine/actions) ejecuta
+además la construcción e instalación del wheel CPython 3.12. El workflow manual
+de empaquetado construye y verifica sdist/wheel, pero omite la publicación. Solo
+un GitHub Release publicado puede activar el job OIDC de PyPI.
 
-[`ci.yml`](.github/workflows/ci.yml) valida el portal, Python y el wheel Rust en
-cada `push`/PR hacia `main`, y también admite ejecución manual. Opera con
-permisos de solo lectura y cancela ejecuciones anteriores de la misma rama.
+El microbenchmark de <code>tests/performance/benchmark.py</code> usa vectores
+sintéticos. Sirve como smoke reproducible y no representa latencia de ingestión,
+disco, Qdrant ni generación LLM; sus números no son un SLA.
 
-[`publish.yml`](.github/workflows/publish.yml) siempre construye y verifica los
-artefactos. Una ejecución manual **no publica**; la publicación a PyPI solo se
-habilita al publicar un GitHub Release y requiere configurar previamente el
-Trusted Publisher de PyPI para el environment `pypi`.
+## Límites antes de producción
 
-### Referencias externas
+- No hay Compose reproducible ni paridad local/Docker demostrada.
+- Faltan pruebas reales de SQLite, Qdrant, Redis y fallos de Ollama.
+- La telemetría persistente del Gateway todavía requiere endurecimiento.
+- No se han ejecutado cargas nominales de ingestión/recuperación de 40–60 GB.
+- El reindexado de archivos cambiados no es atómico.
+- PyPI Trusted Publishing y una publicación pública siguen pendientes.
+- No existen todavía SLAs, RBAC corporativo completo ni certificaciones
+  HIPAA/GDPR acreditadas por este repositorio.
 
-Para integraciones más complejas, guías paso a paso de despliegue y documentación de la API interna, por favor visita nuestra [Wiki Oficial en GitHub](https://github.com/JPatronC92/SES/wiki).
+## Documentación y reglas
 
----
+- [AGENTS.md](AGENTS.md): reglas canónicas de ejecución.
+- [ROADMAP.md](ROADMAP.md): fases y gates del producto.
+- [TASKS.md](TASKS.md): pendientes confirmados contra código.
+- [gateway/README.md](gateway/README.md): operación y contratos del Gateway.
+- [portal/README.md](portal/README.md): rutas y validación del Portal.
+- [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md): contrato y límites del watcher.
 
-## 📈 Monetización y Enterprise
+## Licencia
 
-SES opera bajo un modelo **Open Core**. 
-Esta librería (`ses-core`) representa nuestro "Nivel 1" y siempre será **gratuita, open-source y libre de tracking** (GPLv3) para la comunidad de desarrolladores de IA local.
-
-SaaS administrado, RBAC on-premise, SLAs y cumplimiento regulatorio siguen
-siendo objetivos de productización; este repositorio por sí solo no acredita
-certificación HIPAA o GDPR.
+SES Core se distribuye bajo GPLv3. Las ofertas administradas, SLAs y
+certificaciones regulatorias son objetivos comerciales futuros, no propiedades
+demostradas por el estado actual del repositorio.
