@@ -1,9 +1,60 @@
-# Python
+# Local environment and secret material
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.template
+*.env
+.envrc
+.direnv/
+.secrets/
+secrets/
+credentials.json
+credentials.*.json
+*-credentials.json
+service-account*.json
+*.secret
+*.secrets
+*.token
+.npmrc
+.pypirc
+.netrc
+
+# Private keys, certificates, and encrypted credential stores
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+*.der
+*.csr
+*.kdbx
+*.agekey
+id_rsa*
+id_ed25519*
+.aws/
+.azure/
+.config/gcloud/
+
+# Repository-specific local credentials
+ses-agent-system/keys.json
+ses-agent-system/*.db
+!ses-agent-system/keys.example.json
+
+# Python bytecode, environments, and packaging
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 .Python
+.venv/
+venv/
+env/
+ENV/
+__pypackages__/
 build/
 develop-eggs/
 dist/
@@ -20,53 +71,13 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+pip-wheel-metadata/
 
-# Virtual Env
-venv/
-.venv/
-env/
-ENV/
-
-# Rust
-/target
-/core_rs/target
-**/*.rs.bk
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-.codex
-
-# Environment & Secrets
-.env
-.env.local
-env.json
-credentials.json
-*.pem
-*.key
-ses-agent-system/keys.json
-ses-agent-system/*.db
-
-# Logs
-*.log
-api_logs.txt
-api_logs2.txt
-pytest_out.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-firebase-debug.log*
-
-# Data & Persistence
-data/
-qdrant_data/
-app/static/reports/
-benchmark_log.txt
-pytest_log.txt
+# Python test, coverage, and analysis output
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
 .tox/
 .nox/
@@ -74,9 +85,114 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 .hypothesis/
-session-*.md
+.benchmarks/
+test-results/
+junit*.xml
+*.prof
 
-# Desktop / OS
+# Node, Next.js, and frontend tooling
+node_modules/
+.pnp
+.pnp.*
+.yarn/cache/
+.yarn/install-state.gz
+.pnpm-store/
+.npm/
+.next/
+out/
+.turbo/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Rust and native build artifacts
+target/
+**/*.rs.bk
+*.so
+*.dylib
+*.dll
+*.pdb
+*.exp
+*.lib
+*.whl
+
+# Local databases, queues, and service persistence
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+data/
+qdrant_data/
+qdrant_storage/
+redis-data/
+appendonlydir/
+dump.rdb
+mount_manifest.json
+
+# Generated logs and reports
+*.log
+*.out
+*.err
+logs/
+api_logs*.txt
+benchmark_log*.txt
+pytest_log*.txt
+pytest_out*.log
+app/static/reports/
+
+# Temporary workspaces and local downloads
+.tmp/
+tmp/
+temp/
+.temp/
+scratch/
+.scratch/
+artifacts/
+session-*.md
+*.tmp
+*.temp
+*.bak
+*.orig
+*~
+
+# Locally downloaded AI model artifacts
+models/
+*.gguf
+*.safetensors
+*.onnx
+*.onnx_data
+*.pt
+*.pth
+
+# Editors and assistant-local state
+.idea/
+.vscode/
+.fleet/
+.history/
+.cursor/
+.codex/
+.claude/settings.local.json
+*.swp
+*.swo
+
+# Desktop and operating-system metadata
 .DS_Store
+._*
+.Spotlight-V100/
+.Trashes/
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 _Auditoría*
