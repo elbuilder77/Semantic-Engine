@@ -151,6 +151,7 @@ class EnterpriseReportPDF(FPDF if FPDF is not None else object):
         self._classification = classification
         self._font_path = font_path
         self._font_family = "Helvetica"  # fallback
+        self._has_italic = False
 
         # Register Unicode font if a TTF file is provided
         if font_path and os.path.isfile(font_path):
@@ -326,7 +327,10 @@ class EnterpriseReportPDF(FPDF if FPDF is not None else object):
     def draw_italic_block(self, text: str, indent: float = 10):
         """Render an indented, italic text block (for evidence snippets)."""
         self.set_x(MARGIN_LEFT + indent)
-        self.set_font(self._font_family, "I", 8)
+        try:
+            self.set_font(self._font_family, "I", 8)
+        except Exception:
+            self.set_font(self._font_family, "", 8)
         self.set_text_color(*COLOR_GRAY_TEXT)
         available_w = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT - indent
         self.multi_cell(available_w, 4.5, _sanitize_text(text))

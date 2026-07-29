@@ -14,10 +14,10 @@ when implementation and validation evidence exist.
 
 ## P1 - Correctness and integration
 
-- [ ] Fix persistent Gateway usage telemetry and cover it with a non-permissive mock.
-- [ ] Add real integration tests for SQLite, Qdrant, Redis, and Ollama failure paths.
-- [ ] Add a reproducible local service stack before claiming Docker parity.
-- [ ] Make changed-file reindexing atomic or recoverable.
+- [x] Fix persistent Gateway usage telemetry and cover it with a non-permissive mock.
+- [x] Add real integration tests for SQLite, Qdrant, Redis, and Ollama failure paths.
+- [x] Add a reproducible local service stack before claiming Docker parity.
+- [x] Make changed-file reindexing atomic or recoverable.
 
 ## P2 - Productization
 

@@ -170,12 +170,6 @@ class SESHandler(FileSystemEventHandler):
 
         try:
             previous_doc_id = previous_entry.get("document_id")
-            if previous_doc_id and previous_hash and previous_hash != current_hash:
-                delete_future = asyncio.run_coroutine_threadsafe(
-                    self.service.delete_document(self.namespace, previous_doc_id),
-                    self.loop,
-                )
-                delete_future.result(timeout=120)
 
             with open(abs_path, "rb") as f:
                 metadata = {
@@ -198,10 +192,24 @@ class SESHandler(FileSystemEventHandler):
                 result = future.result(timeout=120)
 
             if result.get("status") == "success":
+                new_doc_id = result.get("document_id")
+
+                # Delete previous version chunks ONLY after successful ingest of new version.
+                # Avoid deleting if the ID hasn't changed (though it should due to new hash).
+                if previous_doc_id and previous_doc_id != new_doc_id:
+                    try:
+                        delete_future = asyncio.run_coroutine_threadsafe(
+                            self.service.delete_document(self.namespace, previous_doc_id),
+                            self.loop,
+                        )
+                        delete_future.result(timeout=120)
+                    except Exception as exc:
+                        logger.error("⚠️ Failed to delete previous chunks for %s: %s", abs_path, exc)
+
                 self._ingested_hashes[abs_path] = current_hash
                 self._manifest[abs_path] = {
                     "content_hash": current_hash,
-                    "document_id": result.get("document_id"),
+                    "document_id": new_doc_id,
                     "filename": os.path.basename(abs_path),
                     "source_path": abs_path,
                     "status": "indexed",
