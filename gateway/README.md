@@ -49,14 +49,17 @@ un gestor externo y mantenga <code>DEBUG=false</code>.
 
 ## Servicios requeridos
 
-No hay un Compose canónico en el repositorio. Para desarrollo:
+El Compose canónico inicia Qdrant, Redis y Ollama con versiones fijas. Configure
+secretos locales únicos antes de levantarlo:
 
 ~~~powershell
-docker run --name ses-qdrant -p 6333:6333 -d qdrant/qdrant
-docker run --name ses-redis -p 6379:6379 -d redis:7.4-alpine
+Copy-Item .env.compose.example .env.compose
+# Edite QDRANT_API_KEY y REDIS_PASSWORD
+docker compose --env-file .env.compose up -d
 ~~~
 
-Ollama se ejecuta por separado cuando se solicita generación de respuesta.
+El Compose cubre dependencias; Gateway y Portal continúan ejecutándose desde el
+código fuente.
 
 ## Arranque
 
@@ -102,8 +105,9 @@ todos los servicios satélite estén disponibles; revise el cuerpo de respuesta.
 - <code>GET /api/v1/admin/reports/health</code>
 - <code>POST /api/v1/reports/evidence</code>
 
-La telemetría existe, pero su persistencia bajo todos los flujos todavía es un
-pendiente P1 y no debe usarse como fuente de facturación hasta cerrar ese gate.
+La telemetría persistente conserva `id` y `tenant_id` al crear llaves y su
+contrato se valida extremo a extremo con SQLite. PostgreSQL real y cualquier
+uso como fuente de facturación continúan siendo gates separados.
 
 ## Portal
 
@@ -117,6 +121,6 @@ de demostración.
 pytest -q gateway/test_gateway.py gateway/test_database.py -p no:cacheprovider
 ~~~
 
-La suite mockea Qdrant, Redis y Ollama para mantener determinismo. El CI completo
-también valida el núcleo, Portal, Rust y empaquetado; las integraciones reales
-siguen separadas como gate abierto.
+La suite del Gateway usa dobles estrictos y SQLite real. La suite general añade
+fallos de conexión loopback para Qdrant, Redis y Ollama. El E2E exitoso contra
+servicios reales continúa separado como gate abierto.
