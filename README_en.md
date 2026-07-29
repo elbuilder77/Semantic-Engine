@@ -31,13 +31,13 @@ the source of truth.
 
 | Surface | Verified state | Current boundary |
 |---|---|---|
-| Python core | 32 tests pass on CPython 3.12 | Real Qdrant/Redis/Ollama integration remains open |
-| Gateway | Auth, key rotation, CORS, and rate limiting are hardened | Persistent telemetry and Docker parity remain open |
+| Python core | Pytest validates core behavior, SQLite, and controlled network failures | Successful E2E against real Qdrant/Redis/Ollama remains open |
+| Gateway | Auth, SQLite telemetry, CORS, and rate limiting are hardened | PostgreSQL validation and full Docker parity remain open |
 | Portal | Next.js 16; lint, build, and eight administration routes validated | Real-service E2E remains open |
 | Rust | CPython 3.12 wheel, tests, Clippy, and NumPy API | Optional and used for candidate batches larger than 50 |
 | CI | Portal, Python, Rust, wheel, Pytest, and synthetic smoke in GitHub Actions | Does not replace end-to-end testing |
 | Packaging | Python wheel and sdist build and pass Twine checks | PyPI Trusted Publisher still requires configuration |
-| Mount Mode | Scan, SHA-256, debounce, manifest, and path traceability | Changed-file reindexing is not atomic yet |
+| Mount Mode | Reindexing ingests first and preserves pending cleanup IDs in the manifest | No distributed transaction with Qdrant |
 
 ## Architecture
 
@@ -120,17 +120,19 @@ Never place an API key in a <code>NEXT_PUBLIC_*</code> variable.
 
 ## Local services
 
-The repository does not yet contain a reviewed Compose stack. For development,
-Qdrant and Redis can be started explicitly:
+The canonical Compose file starts pinned local dependencies with named volumes
+and loopback-only ports. Copy the inventory and configure unique values:
 
 ~~~powershell
-docker run --name ses-qdrant -p 6333:6333 -d qdrant/qdrant
-docker run --name ses-redis -p 6379:6379 -d redis:7.4-alpine
+Copy-Item .env.compose.example .env.compose
+# Set QDRANT_API_KEY and REDIS_PASSWORD in .env.compose
+docker compose --env-file .env.compose up -d
+docker compose --env-file .env.compose ps
 ~~~
 
-Ollama must run separately with the model named by <code>OLLAMA_MODEL</code>.
-The SentenceTransformers embedding model must also be provisioned locally
-before network-free operation.
+This file starts Qdrant, Redis, and Ollama; it does not run the Gateway or
+Portal. The configured Ollama and SentenceTransformers models must be
+provisioned before network-free operation.
 
 ## Run the Gateway and Portal
 
@@ -206,9 +208,11 @@ initial scan, filters PDF/DOCX/XLSX/CSV/TXT/MD files, calculates SHA-256, stores
 <code>source_path</code>, and skips insertion when content is unchanged.
 Filesystem events are grouped with per-path debounce.
 
-Replacing a changed file currently deletes the previous indexed version before
-the new ingestion finishes. The manifest makes recovery possible, but the
-operation is not atomic yet. See [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md).
+Replacing a changed file ingests the new version first. If deleting the old
+version fails, its ID remains under <code>pending_delete_document_ids</code> in
+the manifest and is retried during the next scan. The flow is recoverable but
+is not a distributed Qdrant transaction. See
+[docs/MOUNT_MODE.md](docs/MOUNT_MODE.md).
 
 ## Validation
 
@@ -234,11 +238,11 @@ LLM latency, and its numbers are not an SLA.
 
 ## Production gaps
 
-- No reproducible Compose stack or proven local/Docker parity.
-- Real SQLite, Qdrant, Redis, and Ollama failure-path tests remain open.
-- Persistent Gateway telemetry still needs hardening.
+- A reproducible dependency Compose exists; full Gateway/Portal Docker parity is not proven.
+- SQLite and Qdrant/Redis/Ollama connection failures are covered; successful real-service E2E remains open.
+- Persistent telemetry is validated with SQLite; real PostgreSQL validation remains open.
 - No named 40–60 GB ingestion/retrieval workload has been executed.
-- Changed-file reindexing is not atomic.
+- Changed-file reindexing is manifest-recoverable but not cross-process atomic.
 - PyPI Trusted Publishing and a public release remain pending.
 - The repository does not prove corporate SLAs, complete RBAC, or HIPAA/GDPR
   certification.
