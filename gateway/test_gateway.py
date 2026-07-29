@@ -3,7 +3,7 @@ import sys
 import json
 import pytest
 import hashlib
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock, create_autospec, patch
 from fastapi.testclient import TestClient
 
 # Inject parent directory path to import 'ses' and 'gateway'
@@ -15,6 +15,7 @@ TEST_ADMIN_KEY = "ses_test_admin_key_only_for_tests_2026"
 os.environ["GATEWAY_ADMIN_KEY"] = TEST_ADMIN_KEY
 
 import gateway.server as server_module
+from gateway.database import DatabaseAdapter
 from gateway.server import app
 
 client = TestClient(app)
@@ -70,6 +71,9 @@ def mock_gateway_services():
                 "key": raw_token,
                 "key_details": {
                     "key": new_hash,
+                    "id": "key_uuid_999",
+                    "tenant_id": "tenant_uuid_marketing",
+                    "key_prefix": raw_token[:15],
                     "name": name,
                     "namespace": f"tenant_marketing",
                     "rate_limit": rate_limit,
@@ -252,6 +256,36 @@ async def test_rate_limit_fails_closed_in_production_without_redis():
     assert exc_info.value.status_code == 503
 
 
+@pytest.mark.asyncio
+async def test_persistent_metric_logging_uses_database_contract():
+    strict_db = create_autospec(DatabaseAdapter, instance=True)
+    key_data = {
+        "key": "hashed-test-key",
+        "id": "key-123",
+        "tenant_id": "tenant-123",
+        "name": "Metrics Client",
+        "namespace": "tenant_metrics",
+    }
+
+    with patch("gateway.server.get_database_adapter", return_value=strict_db), \
+         patch("gateway.server.redis_available", False):
+        await server_module.log_request_metric(
+            key_data,
+            "/api/v1/search",
+            200,
+            12.5,
+            tokens=7,
+        )
+
+    strict_db.log_usage.assert_awaited_once_with(
+        tenant_id="tenant-123",
+        api_key_id="key-123",
+        endpoint="/api/v1/search",
+        tokens=7,
+        latency_ms=12.5,
+    )
+
+
 def test_search_and_rag_generation():
     headers = {"X-API-Key": TEST_ADMIN_KEY}
     payload = {
@@ -321,6 +355,8 @@ def test_admin_api_key_management():
     new_key_data = create_payload["key_details"]
     assert new_key_data["name"] == "Frontend Web App"
     assert new_key_data["role"] == "client"
+    assert new_key_data["id"] == "key_uuid_999"
+    assert new_key_data["tenant_id"] == "tenant_uuid_marketing"
     new_token = create_payload["key"]
     
     # 2. Verify we can search using the newly generated key
