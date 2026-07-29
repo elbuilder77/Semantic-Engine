@@ -209,6 +209,9 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                     "key": raw_token,  # Return raw token to display to user once
                     "key_details": {
                         "key": key_hash,
+                        "id": key_id,
+                        "tenant_id": tenant_id,
+                        "key_prefix": key_prefix,
                         "name": name,
                         "namespace": f"tenant_{tenant_id[:8]}",
                         "rate_limit": rate_limit,
@@ -464,8 +467,8 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
                     "INSERT INTO tenants (name, plan_tier, rate_limit_per_minute) VALUES ($1, $2, $3) RETURNING id",
                     name, plan, rate_limit
                 )
-                await conn.execute(
-                    "INSERT INTO api_keys (tenant_id, key_hash, key_prefix, status) VALUES ($1, $2, $3, $4)",
+                key_id = await conn.fetchval(
+                    "INSERT INTO api_keys (tenant_id, key_hash, key_prefix, status) VALUES ($1, $2, $3, $4) RETURNING id",
                     tenant_id, key_hash, key_prefix, "active"
                 )
                 
@@ -473,6 +476,9 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
                     "key": raw_token,
                     "key_details": {
                         "key": key_hash,
+                        "id": str(key_id),
+                        "tenant_id": str(tenant_id),
+                        "key_prefix": key_prefix,
                         "name": name,
                         "namespace": f"tenant_{str(tenant_id)[:8]}",
                         "rate_limit": rate_limit,
