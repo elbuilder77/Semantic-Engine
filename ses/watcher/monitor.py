@@ -145,6 +145,33 @@ class SESHandler(FileSystemEventHandler):
             self._timers[abs_path] = timer
             timer.start()
 
+    def _cleanup_stale_documents(self, abs_path: str, document_ids: List[str]) -> List[str]:
+        """Delete stale document versions and return IDs that still need cleanup."""
+        remaining = []
+        for document_id in dict.fromkeys(doc_id for doc_id in document_ids if doc_id):
+            try:
+                delete_future = asyncio.run_coroutine_threadsafe(
+                    self.service.delete_document(self.namespace, document_id),
+                    self.loop,
+                )
+                deleted = delete_future.result(timeout=120)
+                if deleted is not True:
+                    remaining.append(document_id)
+                    logger.error(
+                        "Failed to delete stale document %s for %s; cleanup remains pending",
+                        document_id,
+                        abs_path,
+                    )
+            except Exception as exc:
+                remaining.append(document_id)
+                logger.error(
+                    "Failed to delete stale document %s for %s: %s",
+                    document_id,
+                    abs_path,
+                    exc,
+                )
+        return remaining
+
     def _debounce_fire(self, abs_path: str):
         """Called when the debounce timer expires — actually process the file."""
         with self._timer_lock:
@@ -193,27 +220,43 @@ class SESHandler(FileSystemEventHandler):
 
             if result.get("status") == "success":
                 new_doc_id = result.get("document_id")
+                if not new_doc_id:
+                    logger.error(
+                        "Ingest succeeded without a document_id for %s; preserving previous manifest",
+                        abs_path,
+                    )
+                    return
 
-                # Delete previous version chunks ONLY after successful ingest of new version.
-                # Avoid deleting if the ID hasn't changed (though it should due to new hash).
+                stale_doc_ids = list(
+                    previous_entry.get("pending_delete_document_ids", [])
+                )
                 if previous_doc_id and previous_doc_id != new_doc_id:
-                    try:
-                        delete_future = asyncio.run_coroutine_threadsafe(
-                            self.service.delete_document(self.namespace, previous_doc_id),
-                            self.loop,
-                        )
-                        delete_future.result(timeout=120)
-                    except Exception as exc:
-                        logger.error("⚠️ Failed to delete previous chunks for %s: %s", abs_path, exc)
+                    stale_doc_ids.append(previous_doc_id)
+                stale_doc_ids = [
+                    document_id
+                    for document_id in stale_doc_ids
+                    if document_id != new_doc_id
+                ]
+                pending_delete_ids = self._cleanup_stale_documents(
+                    abs_path,
+                    stale_doc_ids,
+                )
 
                 self._ingested_hashes[abs_path] = current_hash
-                self._manifest[abs_path] = {
+                manifest_entry = {
                     "content_hash": current_hash,
                     "document_id": new_doc_id,
                     "filename": os.path.basename(abs_path),
                     "source_path": abs_path,
-                    "status": "indexed",
+                    "status": (
+                        "indexed_cleanup_pending"
+                        if pending_delete_ids
+                        else "indexed"
+                    ),
                 }
+                if pending_delete_ids:
+                    manifest_entry["pending_delete_document_ids"] = pending_delete_ids
+                self._manifest[abs_path] = manifest_entry
                 _save_manifest(self.manifest_path, self._manifest)
                 logger.info(
                     "✅ Ingested %s — %d chunks",
@@ -340,6 +383,26 @@ class SESWatcher:
                 # Check if this exact version is already indexed
                 previous_hash = self._handler._ingested_hashes.get(abs_path)
                 if content_hash == previous_hash:
+                    previous_entry = self._handler._manifest.get(abs_path, {})
+                    pending_delete_ids = previous_entry.get(
+                        "pending_delete_document_ids",
+                        [],
+                    )
+                    if pending_delete_ids:
+                        remaining = self._handler._cleanup_stale_documents(
+                            abs_path,
+                            pending_delete_ids,
+                        )
+                        if remaining:
+                            previous_entry["pending_delete_document_ids"] = remaining
+                            previous_entry["status"] = "indexed_cleanup_pending"
+                        else:
+                            previous_entry.pop("pending_delete_document_ids", None)
+                            previous_entry["status"] = "indexed"
+                        _save_manifest(
+                            self._handler.manifest_path,
+                            self._handler._manifest,
+                        )
                     total_skipped += 1
                     continue
 
