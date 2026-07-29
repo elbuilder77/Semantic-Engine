@@ -22,7 +22,7 @@ propiedades de producción.
 - [x] Implementación de **Mount Mode**: Indexación asíncrona de grandes repositorios en modo de solo lectura.
 - [x] Watcher robusto basado en `watchdog` con debounce y checkpoints incrementales.
 - [x] Soporte para múltiples formatos: PDF, DOCX, XLSX, TXT, MD, CSV.
-- [ ] Hacer atómico o recuperable sin ventana de pérdida el reindexado de archivos modificados.
+- [x] Hacer recuperable el reindexado conservando y reintentando limpiezas pendientes.
 - [ ] Optimización de memoria para el escaneo inicial de repositorios masivos (> 60 GB).
 - [ ] Conectores para orígenes de datos locales y compartidos (e.g., SMB/CIFS).
 
