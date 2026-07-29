@@ -250,9 +250,9 @@ async def log_request_metric(key_data: Dict[str, Any], endpoint: str, status_cod
         await db.log_usage(
             tenant_id=tenant_id,
             api_key_id=api_key_id,
-            endpoint_accessed=endpoint,
-            tokens_consumed=tokens,
-            processing_time_ms=latency_ms
+            endpoint=endpoint,
+            tokens=tokens,
+            latency_ms=latency_ms
         )
     except Exception as e:
         logger.error(f"Failed to log usage metrics to SQL Database: {e}")
