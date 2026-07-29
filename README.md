@@ -32,13 +32,13 @@ la fuente de verdad.
 
 | Superficie | Estado comprobado | Límite actual |
 |---|---|---|
-| Núcleo Python | 32 pruebas pasan con CPython 3.12 | Integración real Qdrant/Redis/Ollama pendiente |
-| Gateway | Auth, rotación de llaves, CORS y rate limiting endurecidos | Telemetría persistente y paridad Docker pendientes |
+| Núcleo Python | Pytest valida núcleo, SQLite y fallos de red controlados | E2E exitoso con Qdrant/Redis/Ollama reales pendiente |
+| Gateway | Auth, telemetría SQLite, CORS y rate limiting endurecidos | Validación PostgreSQL y paridad Docker completa pendientes |
 | Portal | Next.js 16; lint, build y ocho rutas administrativas validadas | E2E contra servicios reales pendiente |
 | Rust | Wheel CPython 3.12, pruebas, Clippy y API NumPy | Es opcional y se activa en lotes de más de 50 candidatos |
 | CI | Portal, Python, Rust, wheel, Pytest y smoke sintético en GitHub Actions | No sustituye pruebas end-to-end |
 | Publicación | Wheel y sdist Python se construyen y pasan Twine | PyPI Trusted Publisher aún debe configurarse |
-| Mount Mode | Escaneo, SHA-256, debounce, manifiesto y trazabilidad por ruta | Reindexado de cambios aún no es atómico |
+| Mount Mode | Reindexado primero ingiere y conserva limpiezas pendientes en el manifiesto | No existe una transacción distribuida con Qdrant |
 
 ## Arquitectura
 
@@ -122,17 +122,20 @@ navegador. No coloque una llave en variables <code>NEXT_PUBLIC_*</code>.
 
 ## Servicios locales
 
-No existe todavía un Compose revisado en el repositorio. Para desarrollo pueden
-levantarse Qdrant y Redis explícitamente:
+El Compose canónico levanta dependencias locales con versiones fijas, volúmenes
+nombrados y puertos limitados a loopback. Copie el inventario y configure
+valores únicos:
 
 ~~~powershell
-docker run --name ses-qdrant -p 6333:6333 -d qdrant/qdrant
-docker run --name ses-redis -p 6379:6379 -d redis:7.4-alpine
+Copy-Item .env.compose.example .env.compose
+# Edite QDRANT_API_KEY y REDIS_PASSWORD en .env.compose
+docker compose --env-file .env.compose up -d
+docker compose --env-file .env.compose ps
 ~~~
 
-Ollama debe ejecutarse por separado y tener aprovisionado el modelo configurado
-en <code>OLLAMA_MODEL</code>. El modelo de embeddings de SentenceTransformers
-también debe estar disponible localmente antes de una operación sin red.
+Este archivo levanta Qdrant, Redis y Ollama; no ejecuta Gateway ni Portal. El
+modelo configurado en <code>OLLAMA_MODEL</code> y el modelo de embeddings de
+SentenceTransformers deben aprovisionarse antes de operar sin red.
 
 ## Ejecutar Gateway y Portal
 
@@ -208,9 +211,11 @@ un escaneo inicial, filtra PDF/DOCX/XLSX/CSV/TXT/MD, calcula SHA-256, guarda
 <code>source_path</code> y evita reinserciones cuando el contenido no cambió.
 Los eventos se agrupan mediante debounce.
 
-La sustitución de un archivo cambiado elimina actualmente la versión previa
-antes de completar la nueva ingestión. Por ello el flujo es recuperable por
-manifiesto, pero todavía no es una transacción atómica. Consulte
+La sustitución ingiere primero la versión nueva. Si falla la eliminación de la
+versión anterior, su identificador permanece como
+<code>pending_delete_document_ids</code> en el manifiesto y se reintenta durante
+el siguiente escaneo. El flujo es recuperable, aunque no constituye una
+transacción distribuida con Qdrant. Consulte
 [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md).
 
 ## Validación
@@ -237,11 +242,11 @@ disco, Qdrant ni generación LLM; sus números no son un SLA.
 
 ## Límites antes de producción
 
-- No hay Compose reproducible ni paridad local/Docker demostrada.
-- Faltan pruebas reales de SQLite, Qdrant, Redis y fallos de Ollama.
-- La telemetría persistente del Gateway todavía requiere endurecimiento.
+- Existe un Compose reproducible para dependencias; la paridad completa con Gateway y Portal no está demostrada.
+- SQLite y los fallos de conexión Qdrant/Redis/Ollama tienen cobertura; falta el E2E exitoso contra servicios reales.
+- La telemetría persistente está validada con SQLite; PostgreSQL real sigue pendiente.
 - No se han ejecutado cargas nominales de ingestión/recuperación de 40–60 GB.
-- El reindexado de archivos cambiados no es atómico.
+- El reindexado es recuperable por manifiesto, pero no atómico entre procesos.
 - PyPI Trusted Publishing y una publicación pública siguen pendientes.
 - No existen todavía SLAs, RBAC corporativo completo ni certificaciones
   HIPAA/GDPR acreditadas por este repositorio.
