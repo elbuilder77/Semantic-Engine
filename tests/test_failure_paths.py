@@ -1,5 +1,7 @@
 """Real loopback failure-path checks for external service clients."""
 
+import secrets
+
 import pytest
 import redis.asyncio as redis
 from redis.exceptions import RedisError
@@ -12,7 +14,7 @@ from ses.core.vector_store import QdrantVectorStore
 async def test_qdrant_connection_failure_is_observable(unused_tcp_port):
     store = QdrantVectorStore(
         url=f"http://127.0.0.1:{unused_tcp_port}",
-        api_key="test-only-key",
+        api_key=secrets.token_hex(16),
     )
     try:
         with pytest.raises(Exception):
