@@ -3,29 +3,29 @@
 import secrets
 
 import pytest
-import redis.asyncio as redis
+from qdrant_client import AsyncQdrantClient
+from redis.asyncio import Redis as AsyncRedisClient
 from redis.exceptions import RedisError
 
 from ses.core.llm import LocalLLMProvider
-from ses.core.vector_store import QdrantVectorStore
 
 
 @pytest.mark.asyncio
 async def test_qdrant_connection_failure_is_observable(unused_tcp_port):
-    store = QdrantVectorStore(
+    client = AsyncQdrantClient(
         url=f"http://127.0.0.1:{unused_tcp_port}",
         api_key=secrets.token_hex(16),
     )
     try:
         with pytest.raises(Exception):
-            await store.client.get_collections()
+            await client.get_collections()
     finally:
-        await store.client.close()
+        await client.close()
 
 
 @pytest.mark.asyncio
 async def test_redis_connection_failure_is_observable(unused_tcp_port):
-    client = redis.Redis(
+    client = AsyncRedisClient(
         host="127.0.0.1",
         port=unused_tcp_port,
         socket_connect_timeout=0.25,
