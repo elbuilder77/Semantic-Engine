@@ -94,14 +94,17 @@ La validación del sistema va más allá de asegurar que la API retorne resultad
   debounce antes de ingerir.
 * **Manifiesto local**: persiste hash, `document_id`, nombre y `source_path`
   con reemplazo atómico del archivo JSON del manifiesto.
+* **Reindexado recuperable**: ingiere la versión nueva antes de eliminar la
+  anterior. Si la limpieza falla, conserva los identificadores pendientes en
+  el manifiesto y los reintenta durante el siguiente escaneo.
 * **Trazabilidad básica**: cada ingestión del watcher incluye la ruta absoluta
   del archivo original.
 
 ### Límites todavía abiertos
 
-* **Reindexado no atómico**: al cambiar un archivo, el índice anterior se
-  elimina antes de confirmar la nueva ingestión. Un fallo intermedio puede dejar
-  temporalmente el documento sin versión indexada.
+* **Sin transacción distribuida**: el manifiesto evita perder la referencia a
+  versiones que requieren limpieza, pero la actualización del JSON y las
+  operaciones Qdrant no forman una única transacción.
 * **Sin benchmark de volumen real**: las etapas de 500 MB a 60 GB anteriores
   son un protocolo propuesto; todavía no existe evidencia publicada de esas
   cargas.
@@ -110,8 +113,8 @@ La validación del sistema va más allá de asegurar que la API retorne resultad
   expone como directorios.
 * **Checkpoint limitado**: el manifiesto registra estado por archivo, no avance
   interno de extracción, embeddings o lotes Qdrant.
-* **Paridad operativa pendiente**: no hay un Compose canónico ni pruebas
-  end-to-end con Qdrant, Redis y Ollama reales.
+* **Paridad operativa pendiente**: existe un Compose canónico para dependencias,
+  pero faltan pruebas end-to-end exitosas con Gateway, Qdrant, Redis y Ollama.
 
 Por estas razones, Mount Mode es funcional para desarrollo y validación local,
 pero aún no debe describirse como consolidado para repositorios corporativos de

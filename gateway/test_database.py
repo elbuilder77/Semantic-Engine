@@ -40,3 +40,19 @@ async def test_created_key_is_returned_once_and_cached_as_hash(tmp_path):
     assert raw_key.startswith("ses_")
     assert result["key_details"]["key"] == expected_hash
     assert result["key_details"]["key"] != raw_key
+    assert result["key_details"]["id"]
+    assert result["key_details"]["tenant_id"]
+    assert result["key_details"]["key_prefix"] == raw_key[:15]
+
+    await adapter.log_usage(
+        tenant_id=result["key_details"]["tenant_id"],
+        api_key_id=result["key_details"]["id"],
+        endpoint="/api/v1/search",
+        tokens=12,
+        latency_ms=4.5,
+    )
+    analytics = await adapter.get_analytics()
+
+    assert analytics["total_requests"] == 1
+    assert analytics["total_searches"] == 1
+    assert analytics["recent_logs"][0]["endpoint"] == "/api/v1/search"
