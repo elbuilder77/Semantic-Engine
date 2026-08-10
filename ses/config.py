@@ -57,3 +57,4 @@ DEBOUNCE_SECONDS = float(os.getenv("DEBOUNCE_SECONDS", "2.0"))
 # --- Local LLM ---
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "60.0"))

@@ -83,7 +83,7 @@ class QdrantVectorStore:
         )
         return res.points
 
-    async def search_batch(self, collection_name: str, requests: List[qmodels.SearchRequest]):
+    async def search_batch(self, collection_name: str, requests: List[qmodels.QueryRequest]):
         res = await self.client.query_batch_points(collection_name=collection_name, requests=requests)
         return [r.points for r in res]
 
