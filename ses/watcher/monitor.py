@@ -18,6 +18,7 @@ import os
 import logging
 import asyncio
 import threading
+import time
 from typing import Dict, List, Optional
 
 from watchdog.observers import Observer
@@ -177,6 +178,20 @@ class SESHandler(FileSystemEventHandler):
         with self._timer_lock:
             self._timers.pop(abs_path, None)
 
+        # 1. Size stabilization (platform-agnostic)
+        last_size = -1
+        stable_time_limit = 15.0
+        start_time = time.time()
+        while time.time() - start_time < stable_time_limit:
+            try:
+                current_size = os.path.getsize(abs_path)
+            except OSError:
+                current_size = -1
+            if current_size == last_size and current_size != -1:
+                break
+            last_size = current_size
+            time.sleep(0.3)
+
         # Content-hash dedup check
         current_hash = _file_sha256(abs_path)
         if current_hash is None:
@@ -195,10 +210,27 @@ class SESHandler(FileSystemEventHandler):
         logger.info("🔄 Ingesting %s (hash %s…)", os.path.basename(abs_path), current_hash[:12])
         previous_entry = self._manifest.get(abs_path, {})
 
+        # 2. File opening with exponential backoff for locking/PermissionError
+        f = None
+        retries = 3
+        backoff = 1.0
+        for attempt in range(retries + 1):
+            try:
+                f = open(abs_path, "rb")
+                break
+            except (PermissionError, OSError) as exc:
+                if attempt < retries:
+                    logger.warning("File %s locked or inaccessible: %s. Retrying in %.1fs...", abs_path, exc, backoff)
+                    time.sleep(backoff)
+                    backoff *= 2.0
+                else:
+                    logger.error("Failed to open file %s after %d retries: %s", abs_path, retries, exc)
+                    return
+
         try:
             previous_doc_id = previous_entry.get("document_id")
 
-            with open(abs_path, "rb") as f:
+            with f:
                 metadata = {
                     "source": "local_watcher",
                     "source_path": abs_path,

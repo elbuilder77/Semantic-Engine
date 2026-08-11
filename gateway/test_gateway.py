@@ -193,7 +193,7 @@ def mock_gateway_services():
         
         # Setup mock LLM
         mock_llm = MagicMock()
-        mock_llm.generate_answer.return_value = "Based on page 2 of contract.pdf, the rescission clause states that parties can rescind with a 30-day notice."
+        mock_llm.generate_answer = AsyncMock(return_value="Based on page 2 of contract.pdf, the rescission clause states that parties can rescind with a 30-day notice.")
         mock_llm_class.return_value = mock_llm
         
         yield mock_engine, mock_llm

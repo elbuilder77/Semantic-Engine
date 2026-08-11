@@ -1,10 +1,10 @@
 import os
 import json
 import logging
-import urllib.request
+import httpx
 from typing import Any, Dict, List, Optional
 
-from ses.config import OLLAMA_BASE_URL, OLLAMA_MODEL
+from ses.config import OLLAMA_BASE_URL, OLLAMA_MODEL, OLLAMA_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class LocalLLMProvider:
         self.model = model_override or OLLAMA_MODEL
         self.ollama_url = f"{OLLAMA_BASE_URL.rstrip('/')}/api/generate"
 
-    def generate_answer(self, query: str, context_docs: List[Dict[str, Any]]) -> str:
+    async def generate_answer(self, query: str, context_docs: List[Dict[str, Any]]) -> str:
         if not context_docs:
             return "La documentación disponible no contiene información suficiente para responder a esta consulta."
 
@@ -26,30 +26,29 @@ class LocalLLMProvider:
         context_text = self._build_context(context_docs)
 
         try:
-            return self._call_ollama(system_prompt, context_text, query)
+            return await self._call_ollama(system_prompt, context_text, query)
         except Exception as exc:
             logger.error("Local LLM provider failed: %s", exc)
             return "No fue posible generar una respuesta con el proveedor LLM local. Verifique que Ollama esté en ejecución."
 
-    def _call_ollama(self, system_prompt: str, context: str, query: str) -> str:
+    async def _call_ollama(self, system_prompt: str, context: str, query: str) -> str:
         prompt = f"{system_prompt}\n\nCONTEXT:\n{context}\n\nUSER QUERY: {query}"
         
-        payload = json.dumps({
+        payload = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
             "options": {"temperature": 0.2},
-        }).encode('utf-8')
+        }
 
-        req = urllib.request.Request(
-            self.ollama_url,
-            data=payload,
-            headers={'Content-Type': 'application/json'},
-            method='POST'
-        )
-
-        with urllib.request.urlopen(req, timeout=60) as response:
-            result = json.loads(response.read().decode('utf-8'))
+        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+            response = await client.post(
+                self.ollama_url,
+                json=payload,
+                headers={'Content-Type': 'application/json'}
+            )
+            response.raise_for_status()
+            result = response.json()
             content = result.get("response")
             if not content:
                 raise RuntimeError("Ollama no devolvió contenido utilizable")

@@ -25,9 +25,11 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
-    from fpdf import FPDF
+    from fpdf import FPDF, XPos, YPos
 except ImportError:
     FPDF = None
+    XPos = None
+    YPos = None
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +276,7 @@ class EnterpriseReportPDF(FPDF if FPDF is not None else object):
         self.ln(4)
         self.set_font(self._font_family, "B", 12)
         self.set_text_color(*COLOR_SECONDARY)
-        self.cell(0, 8, _sanitize_text(title), ln=True)
+        self.cell(0, 8, _sanitize_text(title), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.set_draw_color(*COLOR_SECONDARY)
         self.line(MARGIN_LEFT, self.get_y(), PAGE_WIDTH - MARGIN_RIGHT, self.get_y())
         self.ln(3)
@@ -292,7 +294,7 @@ class EnterpriseReportPDF(FPDF if FPDF is not None else object):
         self.set_font(self._font_family, "B", 9)
         self.cell(45, 6, _sanitize_text(key), align="L")
         self.set_font(self._font_family, "", 9)
-        self.cell(0, 6, _sanitize_text(str(value)), ln=True, align="L")
+        self.cell(0, 6, _sanitize_text(str(value)), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="L")
 
     def draw_score_bar(self, x: float, y: float, width: float, height: float, score: float):
         """
@@ -549,7 +551,7 @@ class ReportService:
                 pdf.set_fill_color(*COLOR_WHITE)
             pdf.cell(8,  5, str(i),                        fill=True, align="C")
             pdf.cell(55, 5, _sanitize_text(fname)[:40],    fill=True, align="L")
-            pdf.cell(0,  5, _sanitize_text(str(fpath)),    fill=True, align="L", ln=True)
+            pdf.cell(0,  5, _sanitize_text(str(fpath)),    fill=True, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
         # ── Save ──────────────────────────────────────────────────────────
         out_path = self._output_path("evidence", client_id)
@@ -777,7 +779,7 @@ class ReportService:
             # Query
             pdf.set_font(pdf._font_family, "B", 10)
             pdf.set_text_color(*COLOR_SECONDARY)
-            pdf.cell(0, 6, "Query:", ln=True)
+            pdf.cell(0, 6, "Query:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_text_color(*COLOR_BLACK)
             pdf.draw_body_text(entry.get("query", ""), size=10)
             pdf.ln(2)
@@ -785,7 +787,7 @@ class ReportService:
             # Answer
             pdf.set_font(pdf._font_family, "B", 10)
             pdf.set_text_color(*COLOR_SECONDARY)
-            pdf.cell(0, 6, "Synthesized Answer:", ln=True)
+            pdf.cell(0, 6, "Synthesized Answer:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_text_color(*COLOR_BLACK)
             pdf.draw_body_text(entry.get("answer", ""), size=9)
             pdf.ln(3)
@@ -795,7 +797,7 @@ class ReportService:
             if sources:
                 pdf.set_font(pdf._font_family, "B", 10)
                 pdf.set_text_color(*COLOR_SECONDARY)
-                pdf.cell(0, 6, "Evidence Sources:", ln=True)
+                pdf.cell(0, 6, "Evidence Sources:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
                 pdf.set_text_color(*COLOR_BLACK)
 
                 col_num_c  = 8
@@ -937,7 +939,7 @@ class ReportService:
         pdf.set_fill_color(*banner_color)
         pdf.set_text_color(*COLOR_WHITE)
         pdf.set_font(pdf._font_family, "B", 14)
-        pdf.cell(content_w, 12, status_label, fill=True, align="C", ln=True)
+        pdf.cell(content_w, 12, status_label, fill=True, align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(*COLOR_BLACK)
         pdf.ln(4)
 

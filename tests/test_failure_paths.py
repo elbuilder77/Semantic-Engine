@@ -38,11 +38,12 @@ async def test_redis_connection_failure_is_observable(unused_tcp_port):
         await client.aclose()
 
 
-def test_ollama_connection_failure_returns_documented_fallback(unused_tcp_port):
+@pytest.mark.asyncio
+async def test_ollama_connection_failure_returns_documented_fallback(unused_tcp_port):
     provider = LocalLLMProvider(model_override="test-model")
     provider.ollama_url = f"http://127.0.0.1:{unused_tcp_port}/api/generate"
 
-    result = provider.generate_answer(
+    result = await provider.generate_answer(
         query="test query",
         context_docs=[{"text": "test context"}],
     )

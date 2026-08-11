@@ -527,8 +527,8 @@ class OfflineRAGEngine:
         )
 
         search_queries = [
-            qmodels.SearchRequest(
-                vector=vec,
+            qmodels.QueryRequest(
+                query=vec,
                 limit=top_k,
                 score_threshold=threshold,
                 with_payload=qmodels.PayloadSelectorExclude(exclude=["full_text"]),

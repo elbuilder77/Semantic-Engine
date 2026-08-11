@@ -324,16 +324,17 @@ async def api_search(payload: SearchRequestPayload, key_data: Dict[str, Any] = D
         )
         
         answer = None
+        llm_status = "success"
         if payload.generate_answer:
-            # 2. Local LLM Generation (run in threadpool to prevent blocking)
             try:
                 llm = LocalLLMProvider(model_override=payload.model_override)
-                answer = await asyncio.to_thread(
-                    llm.generate_answer, payload.query, search_result.get("results", [])
-                )
+                answer = await llm.generate_answer(payload.query, search_result.get("results", []))
+                if "No fue posible generar una respuesta con el proveedor LLM local" in answer:
+                    llm_status = "failed"
             except Exception as e:
                 logger.error(f"LLM Generation failed: {e}")
                 answer = f"Error generating answer with local LLM. Context search completed."
+                llm_status = "failed"
 
         latency_ms = (time.time() - t0) * 1000
         
@@ -348,7 +349,12 @@ async def api_search(payload: SearchRequestPayload, key_data: Dict[str, Any] = D
             "total_documents": search_result.get("total_documents", 0),
             "search_time_ms": search_result.get("processing_time_ms", 0),
             "total_time_ms": latency_ms,
-            "rust_accelerated": search_result.get("rust_acceleration", False)
+            "rust_accelerated": search_result.get("rust_acceleration", False),
+            "metadata": {
+                "llm_status": llm_status,
+                "search_time_ms": search_result.get("processing_time_ms", 0),
+                "total_time_ms": latency_ms,
+            }
         }
         
         # Log metrics in background
@@ -691,9 +697,7 @@ async def api_generate_evidence_report(payload: SearchRequestPayload, key_data: 
         if payload.generate_answer:
             try:
                 llm = LocalLLMProvider(model_override=payload.model_override)
-                answer = await asyncio.to_thread(
-                    llm.generate_answer, payload.query, search_result.get("results", [])
-                )
+                answer = await llm.generate_answer(payload.query, search_result.get("results", []))
             except Exception as e:
                 logger.error(f"LLM Generation failed for report: {e}")
                 answer = f"Error generating answer with local LLM. Search completed successfully."
