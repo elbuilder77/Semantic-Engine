@@ -366,16 +366,19 @@ class OfflineRAGEngine:
         try:
             today = time.strftime("%Y-%m-%d")
             # 1. Guardar en el historial global del namespace
-            await self.redis.lpush(
+            pipeline = self.redis.pipeline()
+            pipeline.lpush(
                 f"history:{namespace}", json.dumps({"q": query, "ts": time.time()})
             )
-            await self.redis.ltrim(
+            pipeline.ltrim(
                 f"history:{namespace}", 0, 99
             )  # Mantener últimos 100
 
             # 2. Incrementar frecuencia de uso de los documentos retornados
             for d_id in doc_ids:
-                await self.redis.zincrby(f"usage:{namespace}", 1, d_id)
+                pipeline.zincrby(f"usage:{namespace}", 1, d_id)
+
+            await pipeline.execute()
         except Exception as e:
             logger.warning(f"Error registrando consulta en Redis: {e}")
 
@@ -383,10 +386,16 @@ class OfflineRAGEngine:
         self, namespace: str, doc_ids: List[str]
     ) -> Dict[str, float]:
         """Obtiene las frecuencias de uso para normalizarlas en el ranking."""
+        if not doc_ids:
+            return {}
         try:
-            scores = {}
+            pipeline = self.redis.pipeline()
             for d_id in doc_ids:
-                s = await self.redis.zscore(f"usage:{namespace}", d_id)
+                pipeline.zscore(f"usage:{namespace}", d_id)
+            results = await pipeline.execute()
+
+            scores = {}
+            for d_id, s in zip(doc_ids, results):
                 scores[d_id] = float(s) if s else 0.0
             return scores
         except Exception:

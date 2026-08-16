@@ -96,19 +96,18 @@ def rotate_agent_signing_keys() -> None:
 def revoke_local_sqlite_keys(raw_keys) -> int:
     if not SQLITE_GATEWAY_PATH.exists():
         return 0
-    key_hashes = {
-        hashlib.sha256(raw_key.encode()).hexdigest()
+    key_hashes = [
+        (hashlib.sha256(raw_key.encode()).hexdigest(),)
         for raw_key in raw_keys
         if raw_key
-    }
+    ]
     revoked = 0
     with sqlite3.connect(SQLITE_GATEWAY_PATH) as connection:
-        for key_hash in key_hashes:
-            cursor = connection.execute(
-                "UPDATE api_keys SET status = 'revoked' WHERE key_hash = ? AND status != 'revoked'",
-                (key_hash,),
-            )
-            revoked += cursor.rowcount
+        cursor = connection.executemany(
+            "UPDATE api_keys SET status = 'revoked' WHERE key_hash = ? AND status != 'revoked'",
+            key_hashes,
+        )
+        revoked = cursor.rowcount
         connection.commit()
     return revoked
 
