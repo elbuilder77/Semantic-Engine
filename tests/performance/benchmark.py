@@ -31,10 +31,10 @@ def generate_mock_vectors(num_vectors, dimension=384):
 def python_cosine_similarity_search(query_vector, document_vectors, top_k=5):
     """Pure Python fallback for cosine similarity search."""
     q = np.array(query_vector)
+    q_norm = np.linalg.norm(q)
     scores = []
     for idx, d_vec in enumerate(document_vectors):
         d = np.array(d_vec)
-        q_norm = np.linalg.norm(q)
         d_norm = np.linalg.norm(d)
         if q_norm > 0 and d_norm > 0:
             score = np.dot(q, d) / (q_norm * d_norm)
