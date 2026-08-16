@@ -45,3 +45,52 @@ def test_custom_font_without_italic_uses_regular_style():
         pdf.draw_italic_block("evidence")
 
     set_font.assert_called_once_with("SESFont", "", 8)
+
+def test_generate_usage_report_pdf(tmp_path):
+    output_dir = tmp_path / "reports"
+    service = ReportService(output_dir=str(output_dir))
+
+    analytics_data = {
+        "total_requests": 100,
+        "total_errors": 5,
+        "total_searches": 60,
+        "total_ingestions": 40,
+        "average_latency_ms": 150.5,
+        "keys_performance": [
+            {
+                "name": "Test Key",
+                "namespace": "test_ns",
+                "role": "client",
+                "total_calls": 50,
+                "avg_latency_ms": 100.0
+            }
+        ]
+    }
+
+    try:
+        path = service.generate_usage_report_pdf(analytics_data, "Test Tenant")
+        assert os.path.exists(path)
+        assert path.endswith(".pdf")
+    except ImportError:
+        pytest.skip("fpdf2 not installed")
+
+def test_generate_health_report_pdf(tmp_path):
+    output_dir = tmp_path / "reports"
+    service = ReportService(output_dir=str(output_dir))
+
+    health_data = {
+        "status": "healthy",
+        "uptime_seconds": 3600,
+        "services": {
+            "qdrant": {"status": "ok"},
+            "redis": {"status": "ok"},
+            "ollama": {"status": "ok"}
+        }
+    }
+
+    try:
+        path = service.generate_system_health_pdf(health_data, {}, "Test Tenant")
+        assert os.path.exists(path)
+        assert path.endswith(".pdf")
+    except ImportError:
+        pytest.skip("fpdf2 not installed")

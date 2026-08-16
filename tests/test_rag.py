@@ -112,3 +112,59 @@ async def test_engine_search_uses_numpy_rust_path_for_large_candidate_set():
     assert documents_arg.shape == (51, 2)
     assert top_k_arg == 51
     assert result["rust_acceleration"] is True
+
+@pytest.mark.asyncio
+async def test_engine_clear_namespace():
+    service = OfflineRAGEngine()
+    service.vector_store = MagicMock()
+    service.vector_store.delete_by_payload = AsyncMock(return_value=None)
+    service.vector_store.delete_documents_by_namespace = AsyncMock(return_value=5)
+
+    await service.clear_namespace("test_ns")
+
+    service.vector_store.delete_by_payload.assert_called_once_with(
+        collection_name="client_test_ns",
+        key="namespace",
+        value="test_ns"
+    )
+    service.vector_store.delete_documents_by_namespace.assert_called_once_with("test_ns")
+
+@pytest.mark.asyncio
+async def test_vector_store_delete_by_payload():
+    from ses.core.vector_store import QdrantVectorStore
+    store = QdrantVectorStore()
+    store.client = AsyncMock()
+
+    await store.delete_by_payload("test_col", "test_key", "test_value")
+
+    store.client.delete.assert_called_once()
+    kwargs = store.client.delete.call_args.kwargs
+    assert kwargs["collection_name"] == "test_col"
+    selector = kwargs["points_selector"]
+    assert selector.filter.must[0].key == "test_key"
+    assert selector.filter.must[0].match.value == "test_value"
+
+@pytest.mark.asyncio
+async def test_engine_list_documents():
+    service = OfflineRAGEngine()
+    service.vector_store = MagicMock()
+    mock_point = SimpleNamespace(
+        id="doc1",
+        payload={"text_snippet": "snippet", "indexed_at": 100}
+    )
+    mock_point2 = SimpleNamespace(
+        id="doc2",
+        payload={"text_snippet": "snippet 2", "indexed_at": 200, "filename": "test.txt"}
+    )
+    service.qdrant = MagicMock()
+    service.qdrant.scroll = AsyncMock(return_value=([mock_point, mock_point2], None))
+
+    docs = await service.list_documents("test_ns", limit=10)
+
+    assert len(docs) == 2
+    assert docs[0]["id"] == "doc1"
+    assert docs[0]["text_snippet"] == "snippet"
+    assert docs[0]["indexed_at"] == 100
+    assert docs[1]["id"] == "doc2"
+    assert docs[1]["metadata"]["filename"] == "test.txt"
+    service.qdrant.scroll.assert_called_once()
