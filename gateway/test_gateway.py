@@ -374,3 +374,28 @@ def test_admin_api_key_management():
     # 4. Confirm the revoked key no longer has search privileges (403)
     search_res_revoked = client.post("/api/v1/search", json=search_payload, headers={"X-API-Key": new_token})
     assert search_res_revoked.status_code == 403
+
+def test_api_stats():
+    headers = {"X-API-Key": TEST_ADMIN_KEY}
+    response = client.get("/api/v1/stats", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "stats" in data
+    assert "namespace" in data
+    assert data["namespace"] == "tenant_12345678"
+    assert data["stats"]["total_documents"] == 10
+
+def test_admin_usage_report():
+    headers = {"X-API-Key": TEST_ADMIN_KEY}
+    response = client.get("/api/v1/admin/reports/usage", headers=headers)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert "attachment" in response.headers["content-disposition"]
+
+@pytest.mark.asyncio
+async def test_admin_health_report():
+    headers = {"X-API-Key": TEST_ADMIN_KEY}
+    response = client.get("/api/v1/admin/reports/health", headers=headers)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert "attachment" in response.headers["content-disposition"]

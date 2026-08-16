@@ -580,7 +580,12 @@ class OfflineRAGEngine:
     async def clear_namespace(self, namespace: str) -> None:
         collection_name = self._get_collection_name(namespace)
         try:
-            await self.vector_store.delete_collection(collection_name)
+            await self.vector_store.delete_by_payload(
+                collection_name=collection_name,
+                key="namespace",
+                value=namespace
+            )
+            await self.vector_store.delete_documents_by_namespace(namespace)
         except Exception:
             pass
 
