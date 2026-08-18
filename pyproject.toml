@@ -32,6 +32,7 @@ dependencies = [
     "watchdog>=3.0.0",
     "redis>=5.0.1",
     "python-dotenv>=1.0.0",
+    "smbprotocol>=1.0",
 ]
 
 [project.optional-dependencies]

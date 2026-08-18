@@ -25,7 +25,7 @@ events begin.
 import hashlib
 import logging
 import os
-from typing import Dict, List, Optional, Set
+from typing import Dict, Generator, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +46,9 @@ def _file_sha256(path: str) -> Optional[str]:
         return None
 
 
-def scan_directory(directory: str) -> List[Dict[str, str]]:
+def scan_directory(directory: str) -> Generator[Dict[str, str], None, None]:
     """
-    Recursively walk *directory* and return a manifest of supported files.
+    Recursively walk *directory* and yield manifest entries for supported files.
 
     Each entry is a dict with:
     - ``path``: absolute path
@@ -58,11 +58,9 @@ def scan_directory(directory: str) -> List[Dict[str, str]]:
 
     The directory itself is never modified (read-only contract).
     """
-    manifest: List[Dict[str, str]] = []
-
     if not os.path.isdir(directory):
         logger.warning("Scanner: directory does not exist: %s", directory)
-        return manifest
+        return
 
     for root, _dirs, files in os.walk(directory):
         for fname in files:
@@ -81,15 +79,14 @@ def scan_directory(directory: str) -> List[Dict[str, str]]:
             except OSError:
                 size = 0
 
-            manifest.append({
+            yield {
                 "path": abs_path,
                 "filename": fname,
                 "content_hash": content_hash,
                 "size_bytes": str(size),
-            })
+            }
 
     logger.info(
-        "Scanner: found %d supported files in %s",
-        len(manifest), directory,
+        "Scanner: finished scanning %s",
+        directory,
     )
-    return manifest

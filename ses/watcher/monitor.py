@@ -19,6 +19,7 @@ import logging
 import asyncio
 import threading
 import time
+import io
 from typing import Dict, List, Optional
 
 from watchdog.observers import Observer
@@ -28,6 +29,7 @@ from ses.core.rag import OfflineRAGEngine as UnifiedSearchService, get_vector_se
 from ses.config import WATCH_DIRECTORIES, PERSONAL_NAMESPACE, DEBOUNCE_SECONDS, MOUNT_MANIFEST_PATH
 
 from .scanner import scan_directory
+from .connectors import DataSourceConnector, LocalFileSystemConnector, SMBDataSourceConnector
 
 logger = logging.getLogger(__name__)
 
@@ -163,14 +165,14 @@ class SESHandler(FileSystemEventHandler):
                         document_id,
                         abs_path,
                     )
-            except Exception as exc:
-                remaining.append(document_id)
-                logger.error(
-                    "Failed to delete stale document %s for %s: %s",
-                    document_id,
-                    abs_path,
-                    exc,
-                )
+                except Exception as exc:
+                    remaining.append(document_id)
+                    logger.error(
+                        "Failed to delete stale document %s for %s: %s",
+                        document_id,
+                        abs_path,
+                        exc,
+                    )
         return remaining
 
     def _debounce_fire(self, abs_path: str):
@@ -402,27 +404,102 @@ class SESWatcher:
         - ``source_path`` is stored in each chunk's metadata.
         - Already-indexed files (same hash) are skipped.
         """
+        BATCH_SIZE = 50
+        MAX_CONCURRENT = 10
+
+        def get_connector(uri: str):
+            """Return appropriate connector based on URI scheme."""
+            if uri.lower().startswith("smb://"):
+                return SMBDataSourceConnector()
+            else:
+                return LocalFileSystemConnector()
+
+        async def _process_batch_async(batch):
+            """Process a batch of entries with concurrency limited by semaphore."""
+            semaphore = asyncio.Semaphore(MAX_CONCURRENT)
+
+            async def _ingest_entry(entry):
+                uri = entry["path"]
+                content_hash = entry["content_hash"]
+                filename = entry["filename"]
+                size_bytes = entry["size_bytes"]
+                connector = get_connector(uri)
+                try:
+                    # Read file content via connector
+                    content = connector.read(uri)
+                    if content is None:
+                        logger.warning("Connector.read returned None for %s", uri)
+                        return
+                    # Wrap in BytesIO for ingest_file
+                    file_obj = io.BytesIO(content)
+                    metadata = {
+                        "source": "initial_scan",
+                        "source_path": uri,
+                        "filename": filename,
+                        "content_hash": content_hash,
+                        "size_bytes": size_bytes,
+                    }
+                    async with semaphore:
+                        result = await self.service.ingest_file(
+                            namespace=self.namespace,
+                            file_obj=file_obj,
+                            filename=filename,
+                            metadata=metadata,
+                        )
+                    if result.get("status") == "success":
+                        self._handler._ingested_hashes[uri] = content_hash
+                        self._handler._manifest[uri] = {
+                            "content_hash": content_hash,
+                            "document_id": result.get("document_id"),
+                            "filename": filename,
+                            "source_path": uri,
+                            "size_bytes": size_bytes,
+                            "status": "indexed",
+                        }
+                        _save_manifest(
+                            self._handler.manifest_path,
+                            self._handler._manifest,
+                        )
+                        nonlocal total_ingested
+                        total_ingested += 1
+                        logger.debug(
+                            "Scan: ingested %s (%d chunks)",
+                            filename,
+                            result.get("chunks_count", 1),
+                        )
+                    else:
+                        logger.warning(
+                            "Scan: ingest failed for %s: %s",
+                            uri, result,
+                        )
+                except Exception as exc:
+                    logger.error("Scan: error ingesting %s: %s", uri, exc)
+
+            # Gather all entry tasks
+            tasks = [_ingest_entry(entry) for entry in batch]
+            if tasks:
+                await asyncio.gather(*tasks)
+
         total_ingested = 0
         total_skipped = 0
 
         for directory in self.directories:
-            manifest = scan_directory(directory)
-
-            for entry in manifest:
-                abs_path = entry["path"]
+            batch = []
+            connector = get_connector(directory)  # determine connector type for this directory
+            for entry in connector.scan(directory):
+                uri = entry["path"]
                 content_hash = entry["content_hash"]
-
                 # Check if this exact version is already indexed
-                previous_hash = self._handler._ingested_hashes.get(abs_path)
+                previous_hash = self._handler._ingested_hashes.get(uri)
                 if content_hash == previous_hash:
-                    previous_entry = self._handler._manifest.get(abs_path, {})
+                    previous_entry = self._handler._manifest.get(uri, {})
                     pending_delete_ids = previous_entry.get(
                         "pending_delete_document_ids",
                         [],
                     )
                     if pending_delete_ids:
                         remaining = self._handler._cleanup_stale_documents(
-                            abs_path,
+                            uri,
                             pending_delete_ids,
                         )
                         if remaining:
@@ -438,57 +515,25 @@ class SESWatcher:
                     total_skipped += 1
                     continue
 
-                try:
-                    with open(abs_path, "rb") as f:
-                        metadata = {
-                            "source": "initial_scan",
-                            "source_path": abs_path,
-                            "filename": entry["filename"],
-                            "content_hash": content_hash,
-                            "size_bytes": entry["size_bytes"],
-                        }
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.service.ingest_file(
-                                namespace=self.namespace,
-                                file_obj=f,
-                                filename=entry["filename"],
-                                metadata=metadata,
-                            ),
-                            self.loop,
-                        )
-                        result = future.result(timeout=120)
-
-                    if result.get("status") == "success":
-                        self._handler._ingested_hashes[abs_path] = content_hash
-                        self._handler._manifest[abs_path] = {
-                            "content_hash": content_hash,
-                            "document_id": result.get("document_id"),
-                            "filename": entry["filename"],
-                            "source_path": abs_path,
-                            "size_bytes": entry["size_bytes"],
-                            "status": "indexed",
-                        }
-                        _save_manifest(
-                            self._handler.manifest_path,
-                            self._handler._manifest,
-                        )
-                        total_ingested += 1
-                        logger.debug(
-                            "Scan: ingested %s (%d chunks)",
-                            entry["filename"],
-                            result.get("chunks_count", 1),
-                        )
-                    else:
-                        logger.warning(
-                            "Scan: ingest failed for %s: %s",
-                            abs_path, result,
-                        )
-                except Exception as exc:
-                    logger.error("Scan: error ingesting %s: %s", abs_path, exc)
+                # Not yet indexed, add to batch
+                batch.append(entry)
+                if len(batch) >= BATCH_SIZE:
+                    # Process the batch
+                    asyncio.run_coroutine_threadsafe(
+                        _process_batch_async(batch), self.loop
+                    ).result()
+                    batch.clear()
+            # Process any remaining entries in the batch for this directory
+            if batch:
+                asyncio.run_coroutine_threadsafe(
+                    _process_batch_async(batch), self.loop
+                ).result()
+                batch.clear()
 
         logger.info(
             "📂 Initial scan complete: %d ingested, %d skipped (unchanged).",
-            total_ingested, total_skipped,
+            total_ingested,
+            total_skipped,
         )
 
     def stop(self):
