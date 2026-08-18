@@ -12,8 +12,8 @@ Este documento describe la estrategia paso a paso para completar el 100% de las 
 *   [ ] Conectores para orígenes de datos locales y compartidos (e.g., SMB/CIFS).
 
 **Fase 3: RAG Cognitivo & Enterprise Features**
-*   [ ] Multi-Agent Orchestration: Abstracciones para conectar SES Core con frameworks de agentes (LangGraph, CrewAI).
-*   [ ] RBAC Interno: Controles de acceso basados en roles inyectados directamente en los metadatos de Qdrant.
+*   [x] Multi-Agent Orchestration: Abstracciones para conectar SES Core con frameworks de agentes (LangGraph, CrewAI).
+*   [x] RBAC Interno: Controles de acceso basados en roles inyectados directamente en los metadatos de Qdrant.
 
 ---
 
