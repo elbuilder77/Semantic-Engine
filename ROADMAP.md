@@ -30,8 +30,8 @@ propiedades de producción.
 - [x] **Cognitive Re-Ranking:** Sistema de scoring híbrido integrado (similitud + recencia + uso).
 - [x] **Caching Asíncrono:** TTL Caching con Redis para evitar re-cómputos de inferencia innecesarios.
 - [x] **Generación de Reportes PDF:** Módulo exportable de auditoría técnica.
-- [ ] **Multi-Agent Orchestration:** Abstracciones para conectar SES Core con frameworks de agentes (LangGraph, CrewAI).
-- [ ] **RBAC Interno:** Controles de acceso basados en roles inyectados directamente en los metadatos de Qdrant.
+- [x] **Multi-Agent Orchestration:** Abstracciones para conectar SES Core con frameworks de agentes (LangGraph, CrewAI).
+- [x] **RBAC Interno:** Controles de acceso basados en roles inyectados directamente en los metadatos de Qdrant.
 
 ## 🌍 Fase 4: Ecosistema y Adopción (Productización en curso)
 - [x] Portal administrativo Next.js conectado a los contratos reales del Gateway y validado con lint/build.
