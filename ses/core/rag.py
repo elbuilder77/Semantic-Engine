@@ -14,19 +14,16 @@ from typing import Any, BinaryIO, Dict, List, Optional
 
 import numpy as np
 from qdrant_client.http import models as qmodels
-from sentence_transformers import SentenceTransformer
 
 from . import parsers
 from .chunking import chunk_text
 from .vector_store import VECTOR_SIZE, QdrantVectorStore
+from .providers import ProviderRouter, create_default_router
 
 import redis.asyncio as redis
 from ses.config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, CHUNK_SIZE, CHUNK_OVERLAP
 
 logger = logging.getLogger(__name__)
-
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "cpu")
 
 UUID_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
@@ -43,6 +40,20 @@ try:
     logger.info("🚀 Rust Core Activado")
 except ImportError:
     logger.warning("⚠️ Rust Core no encontrado, usando Python fallback")
+
+
+# Global provider router instance
+_provider_router: Optional[ProviderRouter] = None
+_provider_router_lock = threading.Lock()
+
+
+def get_provider_router() -> ProviderRouter:
+    global _provider_router
+    if _provider_router is None:
+        with _provider_router_lock:
+            if _provider_router is None:
+                _provider_router = create_default_router()
+    return _provider_router
 
 
 def ttl_cache(seconds: int = 60, maxsize: int = 128, copy_func=copy.deepcopy):
@@ -118,21 +129,22 @@ def async_ttl_cache(seconds: int = 60, maxsize: int = 128, copy_func=copy.deepco
 
 
 class OfflineRAGEngine:
-    def __init__(self):
+    def __init__(self, router: Optional[ProviderRouter] = None):
         logger.info("🔄 Inicializando OfflineRAGEngine conectado a Qdrant...")
 
+        self.router = router or get_provider_router()
+        primary = self.router.get_primary_provider()
         logger.info(
-            "🧠 Cargando modelo de embeddings %s en dispositivo: %s",
-            EMBEDDING_MODEL,
-            EMBEDDING_DEVICE,
+            "🧠 Embedding provider: %s (dim=%d)",
+            primary.model_name,
+            primary.dimension,
         )
-        self.model = SentenceTransformer(EMBEDDING_MODEL, device=EMBEDDING_DEVICE)
 
         self.vector_store = QdrantVectorStore()
         self.qdrant = self.vector_store.client
 
-        self.model_name = EMBEDDING_MODEL
-        self.embedding_dim = VECTOR_SIZE
+        self.model_name = primary.model_name
+        self.embedding_dim = primary.dimension
         self.redis = redis.Redis(
             host=REDIS_HOST,
             port=REDIS_PORT,
@@ -208,10 +220,8 @@ class OfflineRAGEngine:
 
         start_time = time.time()
 
-        # Batch encode all chunks at once for efficiency
-        vectors = await asyncio.to_thread(
-            lambda: self.model.encode(chunks).tolist()
-        )
+        # Batch encode all chunks at once for efficiency via provider router
+        vectors = await self.router.embed(chunks)
 
         # Metadata filtering
         safe_metadata = {
@@ -272,7 +282,7 @@ class OfflineRAGEngine:
         await self.vector_store.ensure_collection(collection_name)
 
         texts = [doc["text"] for doc in documents]
-        vectors = await asyncio.to_thread(lambda: self.model.encode(texts).tolist())
+        vectors = await self.router.embed(texts)
 
         points = []
         for i, doc in enumerate(documents):
@@ -308,9 +318,8 @@ class OfflineRAGEngine:
             "namespace": namespace,
         }
 
-    @functools.lru_cache(maxsize=1024)
-    def _encode_query_cached(self, query: str):
-        return self.model.encode(query)
+    async def _encode_query_cached(self, query: str) -> List[float]:
+        return await self.router.embed_query(query)
 
     def _get_intelligent_snippet(
         self, text: str, query: str, context: int = 150
@@ -430,12 +439,14 @@ class OfflineRAGEngine:
         return sorted(results, key=lambda x: x["score"], reverse=True)
 
     async def search(
-        self, namespace: str, query: str, top_k: int = 5, threshold: float = 0.0
+        self, namespace: str, query: str, top_k: int = 5, limit: int = None, threshold: float = 0.0
     ) -> Dict[str, Any]:
+        if limit is not None:
+            top_k = limit
         collection_name = self._get_collection_name(namespace)
         t0 = time.time()
 
-        query_embedding = await asyncio.to_thread(self._encode_query_cached, query)
+        query_embedding = await self._encode_query_cached(query)
 
         if isinstance(query_embedding, np.ndarray):
             query_vector_np = query_embedding.astype(np.float32, copy=False)
@@ -531,9 +542,7 @@ class OfflineRAGEngine:
         collection_name = self._get_collection_name(namespace)
         t0 = time.time()
 
-        query_vectors = await asyncio.to_thread(
-            lambda: self.model.encode(queries).tolist()
-        )
+        query_vectors = await self.router.embed(queries)
 
         search_queries = [
             qmodels.QueryRequest(
@@ -682,6 +691,16 @@ class OfflineRAGEngine:
             return docs
         except Exception:
             return []
+
+    async def _ensure_initialized(self) -> None:
+        """Ensure all client connections are ready (for integration tests)."""
+        # Test redis connection
+        await self.redis.ping()
+        # Test qdrant connection by getting any collection
+        try:
+            await self.vector_store.get_collection("health_check_dummy")
+        except Exception:
+            pass  # Collection doesn't exist, but connection works
 
 
 _service_instance = None

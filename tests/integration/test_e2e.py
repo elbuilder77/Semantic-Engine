@@ -14,6 +14,8 @@ import pytest
 
 from ses.core.rag import OfflineRAGEngine
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_e2e_ingest_and_search():

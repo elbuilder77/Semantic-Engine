@@ -18,6 +18,8 @@ when implementation and validation evidence exist.
 - [x] Add real integration tests for SQLite, Qdrant, Redis, and Ollama failure paths.
 - [x] Add a reproducible local service stack before claiming Docker parity.
 - [x] Make changed-file reindexing atomic or recoverable.
+- [x] Implement provider routing with fallback, timeout, retry, and circuit breaker (ses-provider-routing).
+- [x] Validate fail-closed authentication and rate limiting (ses-core-hardening).
 
 ## P2 - Productization
 

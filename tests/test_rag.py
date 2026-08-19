@@ -71,12 +71,12 @@ async def test_ingest_file_uses_deterministic_mount_ids():
 @pytest.mark.asyncio
 async def test_engine_search_uses_numpy_rust_path_for_large_candidate_set():
     service = OfflineRAGEngine()
-    service.model = MagicMock()
-    service.model.encode.return_value = np.array([1.0, 0.0], dtype=np.float32)
+    # Mock router to return 384-dim embeddings
+    service.router.embed_query = AsyncMock(return_value=[1.0] + [0.0] * 383)
     points = [
         SimpleNamespace(
             id=str(index),
-            vector=[1.0, 0.0],
+            vector=[1.0] + [0.0] * 383,
             score=0.5,
             payload={"text_snippet": f"document {index}", "indexed_at": 0},
         )
@@ -107,9 +107,9 @@ async def test_engine_search_uses_numpy_rust_path_for_large_candidate_set():
     rust_search.assert_called_once()
     query_arg, documents_arg, top_k_arg = rust_search.call_args.args
     assert query_arg.dtype == np.float32
-    assert query_arg.shape == (2,)
+    assert query_arg.shape == (384,)
     assert documents_arg.dtype == np.float32
-    assert documents_arg.shape == (51, 2)
+    assert documents_arg.shape == (51, 384)
     assert top_k_arg == 51
     assert result["rust_acceleration"] is True
 

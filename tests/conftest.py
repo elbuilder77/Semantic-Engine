@@ -7,13 +7,25 @@ os.environ.setdefault("DEBUG", "true")
 
 from ses.config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
 
+# Skip mock for integration tests
+def pytest_configure(config):
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+
 @pytest.fixture(autouse=True)
-def mock_external_dependencies():
-    # 1. Mock SentenceTransformer
-    mock_model = MagicMock()
-    mock_encode_res = MagicMock()
-    mock_encode_res.tolist.return_value = [[0.1] * 384]
-    mock_model.encode.return_value = mock_encode_res
+def mock_external_dependencies(request):
+    if request.node.get_closest_marker("integration"):
+        # Don't mock for integration tests
+        yield
+        return
+
+    # 1. Mock Provider Router with embedding methods
+    mock_router = MagicMock()
+    mock_router.embed = AsyncMock(return_value=[[0.1] * 384])
+    mock_router.embed_query = AsyncMock(return_value=[0.1] * 384)
+    mock_router.get_primary_provider = MagicMock()
+    mock_router.get_primary_provider.return_value.dimension = 384
+    mock_router.get_primary_provider.return_value.model_name = "test-model"
+    mock_router.get_provider_metrics = MagicMock(return_value={})
     
     # 2. Mock AsyncQdrantClient
     mock_qdrant = MagicMock()
@@ -37,14 +49,17 @@ def mock_external_dependencies():
     mock_redis.keys = AsyncMock(return_value=[])
     mock_redis.delete = AsyncMock()
     mock_redis.close = AsyncMock()
+    mock_redis.pipeline = MagicMock(return_value=AsyncMock(
+        lpush=MagicMock(), ltrim=MagicMock(), zincrby=MagicMock(), execute=AsyncMock()
+    ))
     
     # Apply patches
-    with patch("ses.core.rag.SentenceTransformer", return_value=mock_model), \
+    with patch("ses.core.rag.get_provider_router", return_value=mock_router), \
          patch("ses.core.vector_store.AsyncQdrantClient", return_value=mock_qdrant), \
          patch("ses.core.rag.redis.Redis", return_value=mock_redis):
         
         yield {
-            "model": mock_model,
+            "router": mock_router,
             "qdrant": mock_qdrant,
             "redis": mock_redis
         }

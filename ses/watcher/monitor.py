@@ -165,14 +165,14 @@ class SESHandler(FileSystemEventHandler):
                         document_id,
                         abs_path,
                     )
-                except Exception as exc:
-                    remaining.append(document_id)
-                    logger.error(
-                        "Failed to delete stale document %s for %s: %s",
-                        document_id,
-                        abs_path,
-                        exc,
-                    )
+            except Exception as exc:
+                remaining.append(document_id)
+                logger.error(
+                    "Failed to delete stale document %s for %s: %s",
+                    document_id,
+                    abs_path,
+                    exc,
+                )
         return remaining
 
     def _debounce_fire(self, abs_path: str):
