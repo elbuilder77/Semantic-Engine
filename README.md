@@ -4,7 +4,7 @@
 
   [![Python](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://www.python.org)
   [![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](#estado-verificado)
-  [![CI](https://github.com/JPatronC92/Semantic-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JPatronC92/Semantic-Engine/actions/workflows/ci.yml)
+  [![CI](https://github.com/elbuilder77/Semantic-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/elbuilder77/Semantic-Engine/actions/workflows/ci.yml)
   [![Licencia](https://img.shields.io/badge/Licencia-GPLv3-blue.svg)](LICENSE)
 
   *[English version](README_en.md)*
@@ -72,7 +72,7 @@ asumir que <code>pip install ses-core</code> corresponde al código de
 <code>main</code> hasta completar una publicación pública verificada.
 
 ~~~powershell
-git clone https://github.com/JPatronC92/Semantic-Engine.git
+git clone https://github.com/elbuilder77/Semantic-Engine.git
 cd Semantic-Engine
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -231,7 +231,7 @@ cargo test --manifest-path core_rs/Cargo.toml
 cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
 ~~~
 
-[GitHub Actions](https://github.com/JPatronC92/Semantic-Engine/actions) ejecuta
+[GitHub Actions](https://github.com/elbuilder77/Semantic-Engine/actions) ejecuta
 además la construcción e instalación del wheel CPython 3.12. El workflow manual
 de empaquetado construye y verifica sdist/wheel, pero omite la publicación. Solo
 un GitHub Release publicado puede activar el job OIDC de PyPI.

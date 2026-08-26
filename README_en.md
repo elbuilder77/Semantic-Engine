@@ -4,7 +4,7 @@
 
   [![Python](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://www.python.org)
   [![Status](https://img.shields.io/badge/Status-Beta-orange.svg)](#verified-status)
-  [![CI](https://github.com/JPatronC92/Semantic-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JPatronC92/Semantic-Engine/actions/workflows/ci.yml)
+  [![CI](https://github.com/elbuilder77/Semantic-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/elbuilder77/Semantic-Engine/actions/workflows/ci.yml)
   [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
   *[Versión en español](README.md)*
@@ -71,7 +71,7 @@ assume that <code>pip install ses-core</code> matches <code>main</code> until a
 public release has been verified.
 
 ~~~powershell
-git clone https://github.com/JPatronC92/Semantic-Engine.git
+git clone https://github.com/elbuilder77/Semantic-Engine.git
 cd Semantic-Engine
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -227,7 +227,7 @@ cargo test --manifest-path core_rs/Cargo.toml
 cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
 ~~~
 
-[GitHub Actions](https://github.com/JPatronC92/Semantic-Engine/actions) also
+[GitHub Actions](https://github.com/elbuilder77/Semantic-Engine/actions) also
 builds and installs the CPython 3.12 Rust wheel. The manual packaging workflow
 builds and verifies the sdist/wheel but skips publication. Only a published
 GitHub Release can activate the PyPI OIDC job.

@@ -41,9 +41,9 @@ server = ["fastapi>=0.104.0", "uvicorn>=0.23.2", "fpdf2>=2.7.4", "httpx>=0.24.1"
 security = ["cryptography>=41.0.0"]
 
 [project.urls]
-Homepage = "https://github.com/JPatronC92/Semantic-Engine"
-Documentation = "https://github.com/JPatronC92/Semantic-Engine#readme"
-Repository = "https://github.com/JPatronC92/Semantic-Engine.git"
+Homepage = "https://github.com/elbuilder77/Semantic-Engine"
+Documentation = "https://github.com/elbuilder77/Semantic-Engine#readme"
+Repository = "https://github.com/elbuilder77/Semantic-Engine.git"
 
 [tool.setuptools.packages.find]
 include = ["ses*"]
