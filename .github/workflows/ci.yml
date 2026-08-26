@@ -153,14 +153,16 @@ jobs:
     - name: Start services
       run: |
         docker compose -f docker-compose.yml --env-file .env.compose up -d
-        # Wait for services to become healthy (max 30 seconds)
-        for i in {1..30}; do
-          HEALTHY=$(docker compose -f docker-compose.yml --env-file .env.compose ps --format "json" | jq -r '.[] | select(.Service | contains("qdrant") or contains("redis") or contains("ollama")) | .State' | grep -c healthy || true)
-          if [ "$HEALTHY" -eq 3 ]; then
+        # Wait for services to become healthy (max 60 seconds)
+        echo "Waiting for services to be healthy..."
+        for i in {1..60}; do
+          if docker compose -f docker-compose.yml --env-file .env.compose exec -T qdrant curl -sf http://localhost:6333/health > /dev/null 2>&1 && \
+             docker compose -f docker-compose.yml --env-file .env.compose exec -T redis redis-cli -a "$${REDIS_PASSWORD}" ping > /dev/null 2>&1 && \
+             docker compose -f docker-compose.yml --env-file .env.compose exec -T ollama ollama list > /dev/null 2>&1; then
             echo "All services healthy"
             break
           fi
-          echo "Waiting for services to be healthy... ($i/30)"
+          echo "Waiting for services... ($i/60)"
           sleep 1
         done
         # Final check
