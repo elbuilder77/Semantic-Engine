@@ -62,7 +62,6 @@ Main directories:
 - <code>portal/</code>: Next.js administration client.
 - <code>core_rs/</code>: the <code>jas_vector_core</code> PyO3 extension.
 - <code>tests/</code>: Python tests and a synthetic microbenchmark.
-- <code>ses-agent-system/</code>: repository engineering rules and SOPs.
 
 ## Install from source
 
@@ -76,7 +75,7 @@ cd Semantic-Engine
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev,server,security]"
+python -m pip install -e ".[dev,server]"
 ~~~
 
 Package metadata declares Python 3.9–3.12 compatibility; CI currently validates
@@ -107,7 +106,6 @@ python scripts/rotate_local_secrets.py
 The command rotates:
 
 - <code>GATEWAY_ADMIN_KEY</code> in <code>.env</code>;
-- the Ed25519 pair in <code>ses-agent-system/keys.json</code>;
 - previous local administrative SQLite keys when present.
 
 Both secret files and local databases are ignored by Git. In production, use a
@@ -221,10 +219,19 @@ Local gates corresponding to CI:
 ~~~powershell
 pytest -q -p no:cacheprovider
 npm --prefix portal run lint
+npm --prefix portal run test
 npm --prefix portal run build
 cargo fmt --manifest-path core_rs/Cargo.toml -- --check
 cargo test --manifest-path core_rs/Cargo.toml
 cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
+~~~
+
+The command above excludes tests marked as <code>integration</code> by default.
+With Qdrant and Redis available through the documented Compose stack, run the
+E2E gate explicitly:
+
+~~~powershell
+pytest -q -m integration tests/integration
 ~~~
 
 [GitHub Actions](https://github.com/elbuilder77/Semantic-Engine/actions) also
@@ -247,11 +254,8 @@ LLM latency, and its numbers are not an SLA.
 - The repository does not prove corporate SLAs, complete RBAC, or HIPAA/GDPR
   certification.
 
-## Documentation and rules
+## Documentation
 
-- [AGENTS.md](AGENTS.md): canonical execution rules.
-- [ROADMAP.md](ROADMAP.md): product phases and gates.
-- [TASKS.md](TASKS.md): gaps confirmed against live code.
 - [gateway/README.md](gateway/README.md): Gateway operation and contracts.
 - [portal/README.md](portal/README.md): Portal routes and validation.
 - [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md): watcher contract and limits.

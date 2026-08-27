@@ -61,7 +61,7 @@ def test_extract_pdf_content_uses_installed_pypdf_stack():
     pdf.add_page()
     pdf.set_font("Helvetica", size=12)
     pdf.cell(0, 10, "Semantic PDF content")
-    raw = pdf.output(dest="S")
+    raw = pdf.output()
     payload = BytesIO(bytes(raw))
 
     content = extract_text_content(payload, "sample.pdf")

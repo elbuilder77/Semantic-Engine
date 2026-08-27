@@ -247,6 +247,24 @@ def test_cors_rejects_wildcard(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_gateway_lifespan_initializes_persistent_state(monkeypatch):
+    database = MagicMock()
+    database.connect = AsyncMock()
+    database.revoke_api_key = AsyncMock()
+    database.bootstrap_admin_key = AsyncMock()
+    monkeypatch.setenv("GATEWAY_ADMIN_KEY", TEST_ADMIN_KEY)
+
+    with patch("gateway.server.get_database_adapter", return_value=database), \
+         patch("gateway.server.redis_available", False):
+        async with server_module.gateway_lifespan(server_module.app):
+            pass
+
+    database.connect.assert_awaited_once_with()
+    database.revoke_api_key.assert_awaited_once_with("ses_dev_secret_key")
+    database.bootstrap_admin_key.assert_awaited_once_with(TEST_ADMIN_KEY)
+
+
+@pytest.mark.asyncio
 async def test_rate_limit_fails_closed_in_production_without_redis():
     key_data = {"key": "hashed-test-key", "rate_limit": 60}
     with patch("gateway.server.DEBUG", False), patch("gateway.server.redis_available", False):

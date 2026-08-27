@@ -176,7 +176,16 @@ class LocalSentenceTransformerProvider(EmbeddingProvider):
     @property
     def dimension(self) -> int:
         self._ensure_model()
-        return self._model.get_sentence_embedding_dimension()
+        get_dimension = getattr(self._model, "get_embedding_dimension", None)
+        if not callable(get_dimension):
+            get_dimension = self._model.get_sentence_embedding_dimension
+
+        dimension = get_dimension()
+        if dimension is None:
+            raise RuntimeError(
+                f"Embedding model {self._model_name!r} did not report a dimension."
+            )
+        return int(dimension)
 
     @property
     def model_name(self) -> str:
@@ -364,6 +373,7 @@ class ProviderRouter:
 
             try:
                 logger.debug("Trying provider: %s", provider.config.name)
+                failed_calls_before = provider.metrics.failed_calls
                 result = await asyncio.wait_for(
                     provider.embed(texts),
                     timeout=provider.config.timeout,
@@ -372,11 +382,13 @@ class ProviderRouter:
                 return result
             except asyncio.TimeoutError:
                 last_error = TimeoutError(f"Provider {provider.config.name} timed out")
-                provider.record_failure()
+                if provider.metrics.failed_calls == failed_calls_before:
+                    provider.record_failure()
                 logger.warning("Provider %s timed out", provider.config.name)
             except Exception as e:
                 last_error = e
-                provider.record_failure()
+                if provider.metrics.failed_calls == failed_calls_before:
+                    provider.record_failure()
                 logger.warning("Provider %s failed: %s", provider.config.name, e)
 
         logger.error("All providers failed for embed")
@@ -395,6 +407,7 @@ class ProviderRouter:
 
             try:
                 logger.debug("Trying provider for query: %s", provider.config.name)
+                failed_calls_before = provider.metrics.failed_calls
                 result = await asyncio.wait_for(
                     provider.embed_query(query),
                     timeout=provider.config.timeout,
@@ -403,11 +416,13 @@ class ProviderRouter:
                 return result
             except asyncio.TimeoutError:
                 last_error = TimeoutError(f"Provider {provider.config.name} timed out")
-                provider.record_failure()
+                if provider.metrics.failed_calls == failed_calls_before:
+                    provider.record_failure()
                 logger.warning("Provider %s timed out", provider.config.name)
             except Exception as e:
                 last_error = e
-                provider.record_failure()
+                if provider.metrics.failed_calls == failed_calls_before:
+                    provider.record_failure()
                 logger.warning("Provider %s failed: %s", provider.config.name, e)
 
         logger.error("All providers failed for embed_query")
@@ -457,7 +472,13 @@ def create_default_router() -> ProviderRouter:
 
 
 def create_test_router(primary_should_fail: bool = False) -> ProviderRouter:
-    """Create a router for testing with a dummy failing primary."""
-    primary = DummyEmbeddingProvider(should_fail=primary_should_fail)
-    fallback = LocalSentenceTransformerProvider(model_name="all-MiniLM-L6-v2", device="cpu")
+    """Create a deterministic router that never loads an external model."""
+    primary = DummyEmbeddingProvider(
+        config=ProviderConfig(name="dummy-primary", timeout=1.0, max_retries=0),
+        should_fail=primary_should_fail,
+    )
+    fallback = DummyEmbeddingProvider(
+        config=ProviderConfig(name="dummy-fallback", timeout=1.0, max_retries=0),
+        should_fail=False,
+    )
     return ProviderRouter([primary, fallback])

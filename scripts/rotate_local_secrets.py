@@ -2,33 +2,22 @@
 
 The generated files are intentionally ignored by Git:
 - .env stores the local Gateway administrator API key.
-- ses-agent-system/keys.json stores a local Ed25519 signing keypair.
 
-Production deployments should inject equivalent values through their secret
-manager instead of copying these local files.
+Production deployments should inject the equivalent value through their secret
+manager instead of copying this local file.
 """
 
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import secrets
 import sqlite3
 from pathlib import Path
 
-try:
-    from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-except ImportError as exc:  # pragma: no cover - actionable setup guard
-    raise SystemExit(
-        "Install the security tools first: pip install -e .[security]"
-    ) from exc
-
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = ROOT / ".env"
-AGENT_KEYS_PATH = ROOT / "ses-agent-system" / "keys.json"
 SQLITE_GATEWAY_PATH = ROOT / "data" / "gateway.db"
 LEGACY_GATEWAY_ADMIN_KEY = "ses_dev_secret_key"
 DEFAULT_CORS_ORIGINS = (
@@ -72,27 +61,6 @@ def rotate_gateway_admin_key():
     return previous_admin_key
 
 
-def rotate_agent_signing_keys() -> None:
-    private_key = Ed25519PrivateKey.generate()
-    public_key = private_key.public_key()
-    payload = {
-        "public_key": public_key.public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw,
-        ).hex(),
-        "private_key": private_key.private_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PrivateFormat.Raw,
-            encryption_algorithm=serialization.NoEncryption(),
-        ).hex(),
-    }
-    AGENT_KEYS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = AGENT_KEYS_PATH.with_suffix(".json.tmp")
-    temporary_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    os.chmod(temporary_path, 0o600)
-    os.replace(temporary_path, AGENT_KEYS_PATH)
-
-
 def revoke_local_sqlite_keys(raw_keys) -> int:
     if not SQLITE_GATEWAY_PATH.exists():
         return 0
@@ -114,12 +82,10 @@ def revoke_local_sqlite_keys(raw_keys) -> int:
 
 def main() -> None:
     previous_admin_key = rotate_gateway_admin_key()
-    rotate_agent_signing_keys()
     revoked_count = revoke_local_sqlite_keys(
         [LEGACY_GATEWAY_ADMIN_KEY, previous_admin_key]
     )
     print(f"Rotated local Gateway administrator key in {ENV_PATH.name}.")
-    print(f"Rotated local Ed25519 signing keypair in {AGENT_KEYS_PATH.relative_to(ROOT)}.")
     print(f"Revoked local SQLite administrator keys: {revoked_count}.")
     print("Secret values were not printed.")
     print("Restart the Gateway after rotation so the new administrator key is bootstrapped.")

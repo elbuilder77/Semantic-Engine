@@ -63,7 +63,6 @@ Directorios principales:
 - <code>portal/</code>: cliente administrativo Next.js.
 - <code>core_rs/</code>: extensión PyO3 <code>jas_vector_core</code>.
 - <code>tests/</code>: pruebas Python y microbenchmark sintético.
-- <code>ses-agent-system/</code>: reglas y SOP de ingeniería del repositorio.
 
 ## Instalación desde el código fuente
 
@@ -77,7 +76,7 @@ cd Semantic-Engine
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev,server,security]"
+python -m pip install -e ".[dev,server]"
 ~~~
 
 El paquete base declara compatibilidad Python 3.9–3.12; CI valida hoy CPython
@@ -108,7 +107,6 @@ python scripts/rotate_local_secrets.py
 El comando rota:
 
 - <code>GATEWAY_ADMIN_KEY</code> en <code>.env</code>;
-- el par Ed25519 en <code>ses-agent-system/keys.json</code>;
 - llaves administrativas locales anteriores en SQLite, cuando existen.
 
 Ambos archivos de secretos y las bases locales están ignorados por Git. En
@@ -225,10 +223,19 @@ Gates locales equivalentes a CI:
 ~~~powershell
 pytest -q -p no:cacheprovider
 npm --prefix portal run lint
+npm --prefix portal run test
 npm --prefix portal run build
 cargo fmt --manifest-path core_rs/Cargo.toml -- --check
 cargo test --manifest-path core_rs/Cargo.toml
 cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
+~~~
+
+La ejecución anterior excluye por defecto las pruebas marcadas como
+<code>integration</code>. Con Qdrant y Redis disponibles mediante el Compose
+documentado, el gate E2E se ejecuta de forma explícita:
+
+~~~powershell
+pytest -q -m integration tests/integration
 ~~~
 
 [GitHub Actions](https://github.com/elbuilder77/Semantic-Engine/actions) ejecuta
@@ -251,11 +258,8 @@ disco, Qdrant ni generación LLM; sus números no son un SLA.
 - No existen todavía SLAs, RBAC corporativo completo ni certificaciones
   HIPAA/GDPR acreditadas por este repositorio.
 
-## Documentación y reglas
+## Documentación
 
-- [AGENTS.md](AGENTS.md): reglas canónicas de ejecución.
-- [ROADMAP.md](ROADMAP.md): fases y gates del producto.
-- [TASKS.md](TASKS.md): pendientes confirmados contra código.
 - [gateway/README.md](gateway/README.md): operación y contratos del Gateway.
 - [portal/README.md](portal/README.md): rutas y validación del Portal.
 - [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md): contrato y límites del watcher.

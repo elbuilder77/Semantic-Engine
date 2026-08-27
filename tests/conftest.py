@@ -1,15 +1,8 @@
 import os
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
-import redis.asyncio as aioredis
 
 os.environ.setdefault("DEBUG", "true")
-
-from ses.config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
-
-# Skip mock for integration tests
-def pytest_configure(config):
-    config.addinivalue_line("markers", "integration: marks tests as integration tests")
 
 @pytest.fixture(autouse=True)
 def mock_external_dependencies(request):

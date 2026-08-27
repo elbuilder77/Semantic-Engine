@@ -40,11 +40,6 @@ id_ed25519*
 .azure/
 .config/gcloud/
 
-# Repository-specific local credentials
-ses-agent-system/keys.json
-ses-agent-system/*.db
-!ses-agent-system/keys.example.json
-
 # Python bytecode, environments, and packaging
 __pycache__/
 *.py[cod]
@@ -184,6 +179,14 @@ models/
 .cursor/
 .codex/
 .claude/settings.local.json
+AGENTS.md
+CLAUDE.md
+/ROADMAP.md
+/TASKS.md
+/IMPLEMENTATION_PLAN.md
+/parse_roadmap.py
+/ses-agent-system/
+/poetry.lock
 *.swp
 *.swo
 

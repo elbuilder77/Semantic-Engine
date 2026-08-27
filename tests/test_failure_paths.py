@@ -1,7 +1,5 @@
 """Real loopback failure-path checks for external service clients."""
 
-import secrets
-
 import pytest
 from qdrant_client import AsyncQdrantClient
 from redis.asyncio import Redis as AsyncRedisClient
@@ -14,7 +12,7 @@ from ses.core.llm import LocalLLMProvider
 async def test_qdrant_connection_failure_is_observable(unused_tcp_port):
     client = AsyncQdrantClient(
         url=f"http://127.0.0.1:{unused_tcp_port}",
-        api_key=secrets.token_hex(16),
+        check_compatibility=False,
     )
     try:
         with pytest.raises(Exception):

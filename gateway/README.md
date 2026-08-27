@@ -39,7 +39,7 @@ corporativo completo, facturación comercial ni SLAs.
 Genere secretos locales únicos:
 
 ~~~powershell
-python -m pip install -e ".[server,security]"
+python -m pip install -e ".[server]"
 Copy-Item .env.example .env
 python scripts/rotate_local_secrets.py
 ~~~

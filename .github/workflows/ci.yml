@@ -37,6 +37,7 @@ jobs:
     - name: Validate Portal
       run: |
         npm --prefix portal run lint
+        npm --prefix portal run test
         npm --prefix portal run build
 
   test-and-build:
@@ -90,7 +91,6 @@ jobs:
     - name: Install Python Dependencies
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install -e .[dev,server]
         python -m pip install "maturin>=1,<2"
 
@@ -115,7 +115,7 @@ jobs:
         DEBUG: "true"
         VALID_API_KEYS: '{"personal_default": {"tier": "internal", "active": true}, "ses_internal_master_001": {"tier": "internal", "active": true}}'
       run: |
-        pytest --cov=ses --cov-report=xml
+        pytest --cov=ses --cov-report=xml -m "not integration"
 
     - name: Run Bounded Synthetic Performance Smoke
       env:

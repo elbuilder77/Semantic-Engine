@@ -8,6 +8,7 @@ import logging
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -72,10 +73,27 @@ def configured_cors_origins() -> List[str]:
         raise RuntimeError("GATEWAY_CORS_ORIGINS cannot contain a wildcard origin.")
     return origins
 
+
+@asynccontextmanager
+async def gateway_lifespan(_app: FastAPI):
+    """Initialize persistent Gateway state before accepting traffic."""
+    db = get_database_adapter()
+    await db.connect()
+
+    await db.revoke_api_key(_LEGACY_COMPROMISED_ADMIN_KEY)
+    if redis_available:
+        legacy_hash = hashlib.sha256(_LEGACY_COMPROMISED_ADMIN_KEY.encode()).hexdigest()
+        await redis_client.delete(f"gateway:key:{legacy_hash}")
+
+    await db.bootstrap_admin_key(require_gateway_admin_key())
+    yield
+
+
 app = FastAPI(
     title="SES Enterprise Gateway",
     description="Commercial API Layer for SES Offline RAG Engine",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=gateway_lifespan,
 )
 
 # CORS Middleware for client dashboard access
@@ -116,24 +134,6 @@ try:
 except Exception as e:
     redis_available = False
     logger.warning(f"⚠️ Redis client could not be initialized: {e}. Using In-Memory limiters.")
-
-
-# --- DATABASE INITIALIZATION ON STARTUP ---
-
-@app.on_event("startup")
-async def startup_event():
-    # 1. Connect to Database (Postgres or SQLite fallback)
-    db = get_database_adapter()
-    await db.connect()
-
-    # 2. Revoke the known legacy key before activating the configured key.
-    await db.revoke_api_key(_LEGACY_COMPROMISED_ADMIN_KEY)
-    if redis_available:
-        legacy_hash = hashlib.sha256(_LEGACY_COMPROMISED_ADMIN_KEY.encode()).hexdigest()
-        await redis_client.delete(f"gateway:key:{legacy_hash}")
-
-    # 3. Bootstrap the explicitly configured administrator key.
-    await db.bootstrap_admin_key(require_gateway_admin_key())
 
 
 # --- MIDDLEWARES & AUTHENTICATOR ADAPTER ---

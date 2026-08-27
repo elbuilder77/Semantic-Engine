@@ -15,21 +15,53 @@ from ses.core.providers import (
 from ses.core.rag import OfflineRAGEngine
 
 
+def working_dummy(name="dummy-success"):
+    return DummyEmbeddingProvider(
+        config=ProviderConfig(name=name, timeout=1.0, max_retries=0),
+        should_fail=False,
+    )
+
+
+def test_local_provider_dimension_prefers_current_sentence_transformers_api():
+    class CurrentModel:
+        def get_embedding_dimension(self):
+            return 384
+
+        def get_sentence_embedding_dimension(self):
+            raise AssertionError("deprecated API should not be used")
+
+    provider = LocalSentenceTransformerProvider(device="cpu")
+    provider._model = CurrentModel()
+
+    assert provider.dimension == 384
+
+
+def test_local_provider_dimension_supports_legacy_sentence_transformers_api():
+    class LegacyModel:
+        def get_sentence_embedding_dimension(self):
+            return 384
+
+    provider = LocalSentenceTransformerProvider(device="cpu")
+    provider._model = LegacyModel()
+
+    assert provider.dimension == 384
+
+
 @pytest.mark.asyncio
 async def test_provider_router_fallback_on_failure():
     """Test that router falls back to secondary provider when primary fails."""
     # Create router with failing primary and working fallback
     router = create_test_router(primary_should_fail=True)
 
-    # Should succeed via fallback (LocalSentenceTransformerProvider)
+    # Should succeed via a deterministic in-memory fallback.
     result = await router.embed(["test text"])
     assert len(result) == 1
-    assert len(result[0]) == 384  # all-MiniLM-L6-v2 dimension
+    assert len(result[0]) == 384
 
-    # Primary should be marked as failed (may be called multiple times due to retries)
+    # One provider failure is counted once by the provider/router boundary.
     primary = router.providers[0]
-    assert primary.metrics.failed_calls >= 1
-    assert primary.metrics.state in (ProviderState.DEGRADED, ProviderState.OPEN)
+    assert primary.metrics.failed_calls == 1
+    assert primary.metrics.state == ProviderState.HEALTHY
     # Fallback should have succeeded
     fallback = router.providers[1]
     assert fallback.metrics.successful_calls >= 1
@@ -63,7 +95,7 @@ async def test_provider_router_circuit_breaker_opens_after_threshold():
     )
 
     failing_provider = DummyEmbeddingProvider(config=config, should_fail=True)
-    working_provider = LocalSentenceTransformerProvider(device="cpu")
+    working_provider = working_dummy()
 
     router = ProviderRouter([failing_provider, working_provider])
 
@@ -103,7 +135,7 @@ async def test_provider_router_circuit_breaker_half_open_recovery():
             return [[0.0] * 384 for _ in texts]
 
     flaky = FlakyProvider(config=config, should_fail=True)
-    working = LocalSentenceTransformerProvider(device="cpu")
+    working = working_dummy()
 
     router = ProviderRouter([flaky, working])
 
@@ -164,10 +196,10 @@ async def test_provider_metrics_observable():
     await router.embed_query("query test")
 
     metrics = router.get_provider_metrics()
-    assert "dummy-fail" in metrics
-    assert "local-all-MiniLM-L6-v2" in metrics
-    assert metrics["dummy-fail"]["failed_calls"] >= 1
-    assert metrics["local-all-MiniLM-L6-v2"]["successful_calls"] >= 1
+    assert "dummy-primary" in metrics
+    assert "dummy-fallback" in metrics
+    assert metrics["dummy-primary"]["failed_calls"] == 2
+    assert metrics["dummy-fallback"]["successful_calls"] == 2
 
 
 @pytest.mark.asyncio
