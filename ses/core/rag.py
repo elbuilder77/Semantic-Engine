@@ -580,15 +580,20 @@ class OfflineRAGEngine:
             "processing_time_ms": (time.time() - t0) * 1000,
         }
 
-    async def delete_document(self, namespace: str, doc_id: str) -> bool:
+    async def delete_document(
+        self, namespace: str, doc_id: str = None, document_id: str = None
+    ) -> bool:
+        target_id = document_id if document_id is not None else doc_id
+        if not target_id:
+            return False
         collection_name = self._get_collection_name(namespace)
-        final_id = self._to_uuid(doc_id)
+        final_id = self._to_uuid(target_id)
 
         try:
             await self.vector_store.delete_by_payload(
                 collection_name=collection_name,
                 key="parent_document_id",
-                value=str(doc_id),
+                value=str(target_id),
             )
             await self.vector_store.delete(
                 collection_name=collection_name,

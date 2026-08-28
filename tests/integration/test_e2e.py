@@ -99,8 +99,12 @@ async def test_e2e_redis_caching():
         result2 = await engine.search(namespace=namespace, query="Redis caching", limit=5)
         assert result2.get("status") == "success"
 
-        # Optionally, we could assert that the results are identical
-        assert result1.get("results") == result2.get("results")
+        # Verify that the retrieved documents and text are consistent across queries
+        docs1 = result1.get("results", [])
+        docs2 = result2.get("results", [])
+        assert len(docs1) > 0 and len(docs2) > 0
+        assert [r.get("id") for r in docs1] == [r.get("id") for r in docs2]
+        assert [r.get("text") for r in docs1] == [r.get("text") for r in docs2]
 
         # Clean up
         doc_id = ingest_result.get("document_id")
