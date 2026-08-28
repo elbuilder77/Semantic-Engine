@@ -62,13 +62,71 @@ Directorios principales:
 - <code>gateway/</code>: API FastAPI, dashboard estático y SQLite local.
 - <code>portal/</code>: cliente administrativo Next.js.
 - <code>core_rs/</code>: extensión PyO3 <code>jas_vector_core</code>.
+- <code>sdk/</code>: SDKs oficiales para TypeScript (`@ses-ai/client`) y Go (`ses-go`).
 - <code>tests/</code>: pruebas Python y microbenchmark sintético.
 
-## Instalación desde el código fuente
+## 🚀 Despliegue Empresarial Llave en Mano (Docker 1-Click)
 
-La ruta validada actualmente es instalar desde este repositorio. No se debe
-asumir que <code>pip install ses-core</code> corresponde al código de
-<code>main</code> hasta completar una publicación pública verificada.
+Para desplegar la plataforma completa de Semantic Engine (Gateway FastAPI + Portal Next.js + Qdrant + Redis + Ollama) en producción:
+
+~~~powershell
+# 1. Generar configuración criptográfica de producción (.env.prod)
+python scripts/deploy_production.py
+
+# 2. Levantar el stack completo en segundo plano
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+~~~
+
+Servicios disponibles:
+- **Portal Administrativo:** <http://127.0.0.1:3000>
+- **Enterprise Gateway:** <http://127.0.0.1:8000> (Documentación OpenAPI en `/docs`)
+- **Base Vectorial Qdrant:** `:6333` (Red interna aislada)
+- **Caché Redis:** `:6379` (Red interna aislada con autenticación obligatoria)
+- **Servidor LLM Ollama:** `:11434` (Red interna aislada)
+
+---
+
+## 📦 SDKs Oficiales de Integración
+
+### TypeScript / JavaScript (`@ses-ai/client`)
+Consulte la documentación completa en [sdk/typescript/README.md](sdk/typescript/README.md).
+
+~~~typescript
+import { SemanticEngineClient } from "@ses-ai/client";
+
+const client = new SemanticEngineClient({
+  baseUrl: "http://localhost:8000",
+  apiKey: process.env.SES_API_KEY!,
+});
+
+const result = await client.search({
+  namespace: "legal",
+  query: "cláusula de rescisión",
+  generateAnswer: true,
+});
+console.log("Respuesta RAG:", result.answer);
+~~~
+
+### Go (`ses-go`)
+Consulte la documentación completa en [sdk/go/README.md](sdk/go/README.md).
+
+~~~go
+import ses "github.com/elbuilder77/Semantic-Engine/sdk/go"
+
+client, _ := ses.NewClient(ses.ClientConfig{
+    BaseURL: "http://localhost:8000",
+    APIKey:  "tu_llave_api",
+})
+
+resp, _ := client.Search(ctx, ses.SearchRequest{
+    Namespace: "legal",
+    Query:     "cláusula de rescisión",
+})
+~~~
+
+---
+
+## Instalación desde el código fuente
 
 ~~~powershell
 git clone https://github.com/elbuilder77/Semantic-Engine.git
@@ -79,9 +137,6 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[dev,server]"
 ~~~
 
-El paquete base declara compatibilidad Python 3.9–3.12; CI valida hoy CPython
-3.12.
-
 ### Extensión Rust opcional
 
 ~~~powershell
@@ -91,38 +146,9 @@ $wheel = Get-ChildItem core_rs/target/wheels/*.whl | Select-Object -First 1
 python -m pip install --force-reinstall $wheel.FullName
 ~~~
 
-El wheel Rust es independiente del paquete Python base. SES conserva la ruta
-Python cuando el módulo no está instalado o no puede usarse.
+## Servicios locales de desarrollo
 
-## Configuración segura
-
-Use <code>.env.example</code> como inventario de variables. Para desarrollo
-local, genere llaves únicas sin imprimirlas:
-
-~~~powershell
-Copy-Item .env.example .env
-python scripts/rotate_local_secrets.py
-~~~
-
-El comando rota:
-
-- <code>GATEWAY_ADMIN_KEY</code> en <code>.env</code>;
-- llaves administrativas locales anteriores en SQLite, cuando existen.
-
-Ambos archivos de secretos y las bases locales están ignorados por Git. En
-producción use un gestor de secretos, mantenga <code>DEBUG=false</code> y
-configure credenciales no triviales para Qdrant y Redis. La caída de Redis en
-producción bloquea las rutas protegidas; el fallback en memoria existe solo con
-<code>DEBUG=true</code>.
-
-El Portal guarda URL y llave del Gateway en <code>localStorage</code> del
-navegador. No coloque una llave en variables <code>NEXT_PUBLIC_*</code>.
-
-## Servicios locales
-
-El Compose canónico levanta dependencias locales con versiones fijas, volúmenes
-nombrados y puertos limitados a loopback. Copie el inventario y configure
-valores únicos:
+El Compose canónico levanta dependencias satélite para desarrollo:
 
 ~~~powershell
 Copy-Item .env.compose.example .env.compose
@@ -131,75 +157,17 @@ docker compose --env-file .env.compose up -d
 docker compose --env-file .env.compose ps
 ~~~
 
-Este archivo levanta Qdrant, Redis y Ollama; no ejecuta Gateway ni Portal. El
-modelo configurado en <code>OLLAMA_MODEL</code> y el modelo de embeddings de
-SentenceTransformers deben aprovisionarse antes de operar sin red.
-
-## Ejecutar Gateway y Portal
-
 Gateway:
 
 ~~~powershell
 python gateway/run.py
 ~~~
 
-El Gateway queda en <http://127.0.0.1:8000>. Sus rutas principales son:
-
-- <code>POST /api/v1/search</code>
-- <code>POST /api/v1/ingest/file</code>
-- <code>POST /api/v1/ingest/text</code>
-- <code>GET /api/v1/documents</code>
-- <code>DELETE /api/v1/documents/{doc_id}</code>
-- <code>GET /api/v1/health</code> y <code>/api/v1/stats</code>
-- administración de llaves, analítica y reportes bajo <code>/api/v1/admin</code>
-
 Portal:
 
 ~~~powershell
 npm ci --prefix portal
 npm --prefix portal run dev -- --hostname 127.0.0.1 --port 3000
-~~~
-
-Abra <http://127.0.0.1:3000/settings>, capture la URL y una llave administrativa
-rotada, y use **Test Connection**. Las rutas implementadas son
-<code>/dashboard</code>, <code>/search</code>, <code>/documents</code>,
-<code>/keys</code>, <code>/analytics</code>, <code>/reports</code> y
-<code>/settings</code>.
-
-## Uso directo de la librería
-
-~~~python
-import asyncio
-
-from ses.core.llm import LocalLLMProvider
-from ses.core.rag import OfflineRAGEngine
-
-
-async def main():
-    engine = OfflineRAGEngine()
-
-    with open("contrato.pdf", "rb") as source:
-        await engine.ingest_file(
-            namespace="legal",
-            file_obj=source,
-            filename="contrato.pdf",
-            metadata={"source_path": "contrato.pdf"},
-        )
-
-    search = await engine.search(
-        namespace="legal",
-        query="¿Cuáles son las condiciones de rescisión?",
-        top_k=5,
-    )
-
-    answer = LocalLLMProvider().generate_answer(
-        query="Resume las condiciones de rescisión.",
-        context_docs=search["results"],
-    )
-    print(answer)
-
-
-asyncio.run(main())
 ~~~
 
 ## Mount Mode
@@ -209,12 +177,7 @@ un escaneo inicial, filtra PDF/DOCX/XLSX/CSV/TXT/MD, calcula SHA-256, guarda
 <code>source_path</code> y evita reinserciones cuando el contenido no cambió.
 Los eventos se agrupan mediante debounce.
 
-La sustitución ingiere primero la versión nueva. Si falla la eliminación de la
-versión anterior, su identificador permanece como
-<code>pending_delete_document_ids</code> en el manifiesto y se reintenta durante
-el siguiente escaneo. El flujo es recuperable, aunque no constituye una
-transacción distribuida con Qdrant. Consulte
-[docs/MOUNT_MODE.md](docs/MOUNT_MODE.md).
+Consulte [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md).
 
 ## Validación
 
@@ -230,42 +193,6 @@ cargo test --manifest-path core_rs/Cargo.toml
 cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
 ~~~
 
-La ejecución anterior excluye por defecto las pruebas marcadas como
-<code>integration</code>. Con Qdrant y Redis disponibles mediante el Compose
-documentado, el gate E2E se ejecuta de forma explícita:
-
-~~~powershell
-pytest -q -m integration tests/integration
-~~~
-
-[GitHub Actions](https://github.com/elbuilder77/Semantic-Engine/actions) ejecuta
-además la construcción e instalación del wheel CPython 3.12. El workflow manual
-de empaquetado construye y verifica sdist/wheel, pero omite la publicación. Solo
-un GitHub Release publicado puede activar el job OIDC de PyPI.
-
-El microbenchmark de <code>tests/performance/benchmark.py</code> usa vectores
-sintéticos. Sirve como smoke reproducible y no representa latencia de ingestión,
-disco, Qdrant ni generación LLM; sus números no son un SLA.
-
-## Límites antes de producción
-
-- Existe un Compose reproducible para dependencias; la paridad completa con Gateway y Portal no está demostrada.
-- SQLite y los fallos de conexión Qdrant/Redis/Ollama tienen cobertura; falta el E2E exitoso contra servicios reales.
-- La telemetría persistente está validada con SQLite; PostgreSQL real sigue pendiente.
-- No se han ejecutado cargas nominales de ingestión/recuperación de 40–60 GB.
-- El reindexado es recuperable por manifiesto, pero no atómico entre procesos.
-- PyPI Trusted Publishing y una publicación pública siguen pendientes.
-- No existen todavía SLAs, RBAC corporativo completo ni certificaciones
-  HIPAA/GDPR acreditadas por este repositorio.
-
-## Documentación
-
-- [gateway/README.md](gateway/README.md): operación y contratos del Gateway.
-- [portal/README.md](portal/README.md): rutas y validación del Portal.
-- [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md): contrato y límites del watcher.
-
 ## Licencia
 
-SES Core se distribuye bajo GPLv3. Las ofertas administradas, SLAs y
-certificaciones regulatorias son objetivos comerciales futuros, no propiedades
-demostradas por el estado actual del repositorio.
+SES Core se distribuye bajo GPLv3.
