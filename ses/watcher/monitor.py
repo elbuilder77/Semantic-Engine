@@ -425,13 +425,18 @@ class SESWatcher:
                 size_bytes = entry["size_bytes"]
                 connector = get_connector(uri)
                 try:
-                    # Read file content via connector
-                    content = connector.read(uri)
-                    if content is None:
-                        logger.warning("Connector.read returned None for %s", uri)
+                    # Stream file content via connector
+                    file_obj = getattr(connector, "open_stream", None)
+                    if callable(file_obj):
+                        stream = connector.open_stream(uri)
+                    else:
+                        content = connector.read(uri)
+                        stream = io.BytesIO(content) if content is not None else None
+
+                    if stream is None:
+                        logger.warning("Connector could not open stream for %s", uri)
                         return
-                    # Wrap in BytesIO for ingest_file
-                    file_obj = io.BytesIO(content)
+
                     metadata = {
                         "source": "initial_scan",
                         "source_path": uri,
@@ -440,12 +445,16 @@ class SESWatcher:
                         "size_bytes": size_bytes,
                     }
                     async with semaphore:
-                        result = await self.service.ingest_file(
-                            namespace=self.namespace,
-                            file_obj=file_obj,
-                            filename=filename,
-                            metadata=metadata,
-                        )
+                        try:
+                            result = await self.service.ingest_file(
+                                namespace=self.namespace,
+                                file_obj=stream,
+                                filename=filename,
+                                metadata=metadata,
+                            )
+                        finally:
+                            if hasattr(stream, "close"):
+                                stream.close()
                     if result.get("status") == "success":
                         self._handler._ingested_hashes[uri] = content_hash
                         self._handler._manifest[uri] = {

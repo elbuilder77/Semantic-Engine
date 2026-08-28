@@ -2,10 +2,11 @@
 Connectors for various data sources (local filesystem, SMB, etc.) used by SES Watcher.
 """
 
+import io
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Dict, Generator, Optional
+from typing import BinaryIO, Dict, Generator, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,16 @@ class DataSourceConnector(ABC):
         """
         pass
 
+    def open_stream(self, uri: str) -> Optional[BinaryIO]:
+        """
+        Open a binary readable stream for *uri* to avoid holding large files in memory.
+        Defaults to wrapping read() in BytesIO for remote/fallback connectors.
+        """
+        data = self.read(uri)
+        if data is None:
+            return None
+        return io.BytesIO(data)
+
 
 class LocalFileSystemConnector(DataSourceConnector):
     """Connector for local filesystem (default)."""
@@ -50,6 +61,14 @@ class LocalFileSystemConnector(DataSourceConnector):
                 return f.read()
         except (OSError, IOError) as exc:
             logger.warning("Cannot read local file %s: %s", path, exc)
+            return None
+
+    def open_stream(self, path: str) -> Optional[BinaryIO]:
+        """Open a local file as a streamed descriptor without memory buffering."""
+        try:
+            return open(path, "rb")
+        except (OSError, IOError) as exc:
+            logger.warning("Cannot open local file stream %s: %s", path, exc)
             return None
 
 

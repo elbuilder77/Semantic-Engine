@@ -79,7 +79,7 @@ def benchmark_search(num_documents=1000, dimensions=384, top_k=10, iterations=50
         print(f"  -> Rust Core: {rust_duration:.4f} ms por búsqueda")
         
         speedup = python_duration / rust_duration
-        print(f"  ➔ Aceleración Rust vs Python: {speedup:.2f}x de velocidad")
+        print(f"  -> Aceleración Rust vs Python: {speedup:.2f}x de velocidad")
     else:
         print("  -> Rust Core: NO DISPONIBLE (Compila core_rs/ para habilitar)")
 
@@ -103,7 +103,34 @@ def benchmark_chunking(iterations=10):
     
     throughput_kb_s = text_length_kb / duration
     print(f"  -> Tiempo Promedio de Segmentación: {duration:.4f} s")
-    print(f"  ➔ Throughput: {throughput_kb_s:.2f} KB/segundo")
+    print(f"  -> Throughput: {throughput_kb_s:.2f} KB/segundo")
+
+def benchmark_streaming_scan(num_files=1000):
+    import tempfile
+    import shutil
+    from ses.watcher.scanner import scan_directory
+
+    print(f"\n--- BENCHMARK: Streaming Directory Scanner ({num_files} Archivos) ---")
+    temp_dir = tempfile.mkdtemp(prefix="ses_bench_scan_")
+    try:
+        sample_content = "SES Mount Mode streaming benchmark content for large scale validation.\n" * 10
+        for i in range(num_files):
+            sub_dir = os.path.join(temp_dir, f"sub_{i % 10}")
+            os.makedirs(sub_dir, exist_ok=True)
+            file_path = os.path.join(sub_dir, f"doc_{i}.txt")
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(sample_content)
+
+        start_time = time.perf_counter()
+        count = 0
+        for _ in scan_directory(temp_dir):
+            count += 1
+        elapsed = time.perf_counter() - start_time
+        rate = count / elapsed if elapsed > 0 else 0
+        print(f"  -> Archivos escaneados: {count} en {elapsed:.4f} s")
+        print(f"  -> Throughput de Escaneo: {rate:.2f} archivos/segundo")
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 def main():
     print("=========================================================")
@@ -111,6 +138,7 @@ def main():
     print("=========================================================")
     print(f"Estado de Aceleración Rust Core: {'ACTIVO 🚀' if rust_core_available else 'INACTIVO ⚠️'}")
     
+    benchmark_streaming_scan(num_files=1000)
     benchmark_chunking()
     benchmark_search(num_documents=100, iterations=100)
     benchmark_search(num_documents=1000, iterations=50)

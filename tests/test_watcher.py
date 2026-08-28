@@ -157,3 +157,20 @@ def test_ingest_without_document_id_preserves_previous_manifest(tmp_path):
     assert persisted == previous_entry
     service.delete_document.assert_not_called()
     handler.loop.close()
+
+
+def test_local_filesystem_connector_open_stream(tmp_path):
+    from ses.watcher.connectors import LocalFileSystemConnector
+
+    test_file = tmp_path / "sample.txt"
+    test_file.write_text("stream content", encoding="utf-8")
+
+    connector = LocalFileSystemConnector()
+    stream = connector.open_stream(str(test_file))
+    assert stream is not None
+    try:
+        content = stream.read().decode("utf-8")
+        assert content == "stream content"
+    finally:
+        stream.close()
+
