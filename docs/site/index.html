@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Engine (SES Core) — Offline-First Enterprise RAG Platform</title>
+    <meta name="description" content="Offline-first RAG engine for private document intelligence. Built with Python, Rust PyO3, Qdrant, Redis, Ollama, Next.js, and multi-language SDKs.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="glow-bg"></div>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon">🧠</span>
+                <span class="logo-text">SES <strong>Core</strong></span>
+                <span class="version-badge">v2.0.0</span>
+            </div>
+            <nav class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#quickstart">Quickstart</a>
+                <a href="#sdks">SDKs</a>
+                <a href="#docker">Docker 1-Click</a>
+            </nav>
+            <div class="nav-actions">
+                <a href="https://pypi.org/project/ses-core/" target="_blank" rel="noreferrer" class="btn btn-secondary">PyPI Package</a>
+                <a href="https://github.com/elbuilder77/Semantic-Engine" target="_blank" rel="noreferrer" class="btn btn-primary">GitHub Repository</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="badge-pill">
+                <span class="pulse-dot"></span>
+                <span>Production-Ready & Enterprise-Hardened</span>
+            </div>
+            <h1 class="hero-title">
+                Private, High-Performance<br>
+                <span class="gradient-text">Offline-First RAG Platform</span>
+            </h1>
+            <p class="hero-subtitle">
+                Turn your enterprise documents into an instant semantic intelligence knowledge base.
+                Zero cloud leaks, local LLM synthesis, streaming file descriptors, and PyO3 Rust vector acceleration.
+            </p>
+            <div class="hero-cta">
+                <a href="#quickstart" class="btn btn-primary btn-lg">Get Started in 30 Seconds</a>
+                <a href="https://github.com/elbuilder77/Semantic-Engine/releases" target="_blank" rel="noreferrer" class="btn btn-glass btn-lg">View Release Notes</a>
+            </div>
+
+            <!-- Terminal Hero Preview -->
+            <div class="terminal-card">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <span class="terminal-title">bash — Quick Installation & Deployment</span>
+                </div>
+                <div class="terminal-body">
+                    <code><span class="comment"># 1. Install pure Python library</span></code>
+                    <code><span class="prompt">$</span> pip install ses-core</code>
+                    <code><span class="comment"># 2. Or deploy the entire turnkey enterprise platform</span></code>
+                    <code><span class="prompt">$</span> git clone https://github.com/elbuilder77/Semantic-Engine.git</code>
+                    <code><span class="prompt">$</span> python scripts/deploy_production.py</code>
+                    <code><span class="prompt">$</span> docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build</code>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="features" class="features-section">
+        <div class="section-container">
+            <div class="section-header">
+                <h2>Engineered for Scale, Security & Privacy</h2>
+                <p>A unified offline-first architecture designed for mission-critical enterprise environments.</p>
+            </div>
+
+            <div class="grid grid-3">
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>100% Offline-First Security</h3>
+                    <p>All embeddings, vector storage (Qdrant), and LLM reasoning (Ollama) run entirely within your infrastructure with fail-closed authentication.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>PyO3 Rust Acceleration</h3>
+                    <p>Native Rust extension (<code>jas_vector_core</code>) with zero-copy NumPy memory views accelerating candidate re-ranking up to 40x.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🗂️</div>
+                    <h3>Mount Mode & Low-RAM Streaming</h3>
+                    <p>Ingests massive document repositories (>60 GB) using descriptor streaming with O(1) memory overhead and automatic change detection.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3>Cognitive Hybrid Re-Ranking</h3>
+                    <p>Multi-dimensional scoring combining dense vector similarity, document usage frequency, and recency decay for optimal context delivery.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h3>Multi-Language SDKs</h3>
+                    <p>First-class official bindings for <strong>TypeScript/JavaScript</strong> (<code>@ses-ai/client</code>) and <strong>Go</strong> (<code>ses-go</code>).</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Next.js 16 Admin Portal</h3>
+                    <p>Modern management console with real-time health telemetry, interactive RAG playground, document manager, and PDF audit reports.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="architecture-section">
+        <div class="section-container">
+            <div class="section-header">
+                <h2>Architecture Overview</h2>
+                <p>Modular, observable, and decoupled components communicating via high-throughput contracts.</p>
+            </div>
+
+            <div class="architecture-box">
+                <pre><code>
+   ┌─────────────────────────────────────────────────────────────┐
+   │                     Client Applications                     │
+   │   Next.js Portal  │  TypeScript SDK  │  Go SDK  │  Python   │
+   └──────────────────────────────┬──────────────────────────────┘
+                                  │ HTTP / REST (X-API-Key)
+                                  ▼
+   ┌─────────────────────────────────────────────────────────────┐
+   │              SES Enterprise Gateway (FastAPI)               │
+   │  - Fail-Closed Auth   - Persistent Analytics (SQLite)       │
+   │  - Rate Limiting      - Audit PDF Exporting Engine          │
+   └──────────────────────────────┬──────────────────────────────┘
+                                  │
+         ┌────────────────────────┼────────────────────────┐
+         ▼                        ▼                        ▼
+   ┌───────────┐            ┌───────────┐            ┌───────────┐
+   │  Qdrant   │            │   Redis   │            │  Ollama   │
+   │ Vector DB │            │ TTL Cache │            │ Local LLM │
+   │  (:6333)  │            │  (:6379)  │            │ (:11434)  │
+   └───────────┘            └───────────┘            └───────────┘
+                </code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Code SDKs Section -->
+    <section id="sdks" class="sdks-section">
+        <div class="section-container">
+            <div class="section-header">
+                <h2>Polyglot Integration in 3 Lines of Code</h2>
+                <p>Integrate search and offline RAG into your stack in your language of choice.</p>
+            </div>
+
+            <div class="code-tabs">
+                <div class="code-tab-panel">
+                    <div class="code-header">
+                        <span class="lang-tag">TypeScript / Node.js</span>
+                        <span class="pkg-name">npm install @ses-ai/client</span>
+                    </div>
+                    <pre><code><span class="keyword">import</span> { <span class="type">SemanticEngineClient</span> } <span class="keyword">from</span> <span class="string">"@ses-ai/client"</span>;
+
+<span class="keyword">const</span> client = <span class="keyword">new</span> <span class="type">SemanticEngineClient</span>({
+  baseUrl: <span class="string">"http://localhost:8000"</span>,
+  apiKey: process.env.SES_API_KEY!,
+});
+
+<span class="keyword">const</span> { answer, results } = <span class="keyword">await</span> client.search({
+  namespace: <span class="string">"contracts"</span>,
+  query: <span class="string">"What is the liability limitation clause?"</span>,
+  generateAnswer: <span class="keyword">true</span>,
+});</code></pre>
+                </div>
+
+                <div class="code-tab-panel">
+                    <div class="code-header">
+                        <span class="lang-tag">Go</span>
+                        <span class="pkg-name">go get github.com/elbuilder77/Semantic-Engine/sdk/go</span>
+                    </div>
+                    <pre><code><span class="keyword">import</span> (
+    <span class="string">"context"</span>
+    ses <span class="string">"github.com/elbuilder77/Semantic-Engine/sdk/go"</span>
+)
+
+client, _ := ses.NewClient(ses.ClientConfig{
+    BaseURL: <span class="string">"http://localhost:8000"</span>,
+    APIKey:  <span class="string">"your_api_key"</span>,
+})
+
+resp, _ := client.Search(context.Background(), ses.SearchRequest{
+    Namespace:      <span class="string">"contracts"</span>,
+    Query:          <span class="string">"termination conditions"</span>,
+    GenerateAnswer: <span class="keyword">true</span>,
+})</code></pre>
+                </div>
+
+                <div class="code-tab-panel">
+                    <div class="code-header">
+                        <span class="lang-tag">Python (Library Direct)</span>
+                        <span class="pkg-name">pip install ses-core</span>
+                    </div>
+                    <pre><code><span class="keyword">from</span> ses.core.rag <span class="keyword">import</span> OfflineRAGEngine
+
+engine = OfflineRAGEngine()
+<span class="keyword">await</span> engine.ingest_file(namespace=<span class="string">"legal"</span>, file_obj=open(<span class="string">"doc.pdf"</span>, <span class="string">"rb"</span>), filename=<span class="string">"doc.pdf"</span>, metadata={})
+results = <span class="keyword">await</span> engine.search(namespace=<span class="string">"legal"</span>, query=<span class="string">"termination conditions"</span>)</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="logo-icon">🧠</span>
+                <span class="logo-text">Semantic Engine (SES Core)</span>
+            </div>
+            <div class="footer-links">
+                <a href="https://github.com/elbuilder77/Semantic-Engine" target="_blank" rel="noreferrer">GitHub</a>
+                <a href="https://pypi.org/project/ses-core/" target="_blank" rel="noreferrer">PyPI</a>
+                <a href="https://github.com/elbuilder77/Semantic-Engine/blob/main/LICENSE" target="_blank" rel="noreferrer">GPLv3 License</a>
+            </div>
+            <div class="footer-copy">
+                &copy; 2026 SES Core Project. Open Source & Operator Controlled.
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
