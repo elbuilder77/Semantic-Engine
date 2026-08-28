@@ -152,15 +152,17 @@ jobs:
         EOF
 
     - name: Start services
+      env:
+        QDRANT_API_KEY: ${{ steps.creds.outputs.QDRANT_API_KEY }}
+        REDIS_PASSWORD: ${{ steps.creds.outputs.REDIS_PASSWORD }}
       run: |
         docker compose -f docker-compose.yml --env-file .env.compose up -d
         # Wait for services to become healthy (max 60 seconds)
         echo "Waiting for services to be healthy..."
         for i in {1..60}; do
-          if docker compose -f docker-compose.yml --env-file .env.compose exec -T qdrant curl -sf http://localhost:6333/health > /dev/null 2>&1 && \
-             docker compose -f docker-compose.yml --env-file .env.compose exec -T redis redis-cli -a "$${REDIS_PASSWORD}" ping > /dev/null 2>&1 && \
-             docker compose -f docker-compose.yml --env-file .env.compose exec -T ollama ollama list > /dev/null 2>&1; then
-            echo "All services healthy"
+          if (curl -sf http://localhost:6333/healthz > /dev/null 2>&1 || curl -sf http://localhost:6333/health > /dev/null 2>&1) && \
+             (docker compose -f docker-compose.yml --env-file .env.compose exec -T redis redis-cli -a "${REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG); then
+            echo "All services healthy after $i seconds"
             break
           fi
           echo "Waiting for services... ($i/60)"

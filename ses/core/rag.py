@@ -470,7 +470,7 @@ class OfflineRAGEngine:
             )
         except Exception as e:
             logger.exception("Error during Qdrant search:")
-            return {"results": [], "total_documents": 0, "processing_time_ms": 0}
+            return {"status": "error", "results": [], "total_documents": 0, "processing_time_ms": 0}
 
         final_results_order = []
         rust_accelerated = False
@@ -530,6 +530,7 @@ class OfflineRAGEngine:
         )
 
         return {
+            "status": "success",
             "results": reranked_results[:top_k],
             "total_documents": await self._get_points_count(collection_name),
             "processing_time_ms": (time.time() - t0) * 1000,
@@ -560,6 +561,7 @@ class OfflineRAGEngine:
             )
         except Exception:
             return {
+                "status": "error",
                 "results": [[] for _ in queries],
                 "total_documents": 0,
                 "processing_time_ms": 0,
@@ -572,6 +574,7 @@ class OfflineRAGEngine:
         ]
 
         return {
+            "status": "success",
             "results": formatted_results,
             "total_documents": await self._get_points_count(collection_name),
             "processing_time_ms": (time.time() - t0) * 1000,
