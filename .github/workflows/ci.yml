@@ -141,8 +141,12 @@ jobs:
     - name: Generate test credentials
       id: creds
       run: |
-        echo "QDRANT_API_KEY=$(openssl rand -hex 16)" >> $GITHUB_OUTPUT
-        echo "REDIS_PASSWORD=$(openssl rand -hex 16)" >> $GITHUB_OUTPUT
+        QDRANT_API_KEY="$(openssl rand -hex 16)"
+        REDIS_PASSWORD="$(openssl rand -hex 16)"
+        echo "::add-mask::$QDRANT_API_KEY"
+        echo "::add-mask::$REDIS_PASSWORD"
+        echo "QDRANT_API_KEY=$QDRANT_API_KEY" >> "$GITHUB_OUTPUT"
+        echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> "$GITHUB_OUTPUT"
 
     - name: Prepare environment file
       run: |
@@ -156,20 +160,26 @@ jobs:
         QDRANT_API_KEY: ${{ steps.creds.outputs.QDRANT_API_KEY }}
         REDIS_PASSWORD: ${{ steps.creds.outputs.REDIS_PASSWORD }}
       run: |
-        docker compose -f docker-compose.yml --env-file .env.compose up -d
+        docker compose -f docker-compose.yml --env-file .env.compose up -d qdrant redis
         # Wait for services to become healthy (max 60 seconds)
         echo "Waiting for services to be healthy..."
+        services_ready=false
         for i in {1..60}; do
           if (curl -sf http://localhost:6333/healthz > /dev/null 2>&1 || curl -sf http://localhost:6333/health > /dev/null 2>&1) && \
              (docker compose -f docker-compose.yml --env-file .env.compose exec -T redis redis-cli -a "${REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG); then
             echo "All services healthy after $i seconds"
+            services_ready=true
             break
           fi
           echo "Waiting for services... ($i/60)"
           sleep 1
         done
-        # Final check
-        docker compose -f docker-compose.yml --env-file .env.compose ps
+        if [ "$services_ready" != "true" ]; then
+          echo "::error::Qdrant and Redis did not become healthy within 60 seconds."
+          docker compose -f docker-compose.yml --env-file .env.compose ps qdrant redis
+          exit 1
+        fi
+        docker compose -f docker-compose.yml --env-file .env.compose ps qdrant redis
 
     - name: Set up Python
       uses: actions/setup-python@v6
@@ -180,15 +190,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .[dev]
+        python -m pip install --no-cache-dir \
+          --index-url https://download.pytorch.org/whl/cpu \
+          "torch==2.13.0+cpu"
+        python -m pip install --no-cache-dir -e .[dev]
 
     - name: Run integration tests
       env:
         DEBUG: "true"
         QDRANT_API_KEY: ${{ steps.creds.outputs.QDRANT_API_KEY }}
         REDIS_PASSWORD: ${{ steps.creds.outputs.REDIS_PASSWORD }}
-        OLLAMA_BASE_URL: http://localhost:11434
-        OLLAMA_MODEL: llama3.2
       run: |
         pytest --cov=ses --cov-report=xml -m integration tests/integration/
 
