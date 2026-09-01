@@ -9,7 +9,7 @@ services:
     environment:
       QDRANT__SERVICE__API_KEY: "${QDRANT_API_KEY:?Set QDRANT_API_KEY in .env.compose}"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:6333/healthz || curl -sf http://localhost:6333/healthz || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10

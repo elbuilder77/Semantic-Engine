@@ -77,13 +77,26 @@ def configured_cors_origins() -> List[str]:
 @asynccontextmanager
 async def gateway_lifespan(_app: FastAPI):
     """Initialize persistent Gateway state before accepting traffic."""
+    global redis_available
+    if redis_client is not None:
+        try:
+            await redis_client.ping()
+            redis_available = True
+            logger.info("🔌 Connected to Redis for Enterprise Rate Limiting & Cache.")
+        except Exception as e:
+            redis_available = False
+            logger.warning(f"⚠️ Redis ping failed: {e}. Falling back to local/in-memory limiters.")
+
     db = get_database_adapter()
     await db.connect()
 
     await db.revoke_api_key(_LEGACY_COMPROMISED_ADMIN_KEY)
     if redis_available:
         legacy_hash = hashlib.sha256(_LEGACY_COMPROMISED_ADMIN_KEY.encode()).hexdigest()
-        await redis_client.delete(f"gateway:key:{legacy_hash}")
+        try:
+            await redis_client.delete(f"gateway:key:{legacy_hash}")
+        except Exception:
+            pass
 
     await db.bootstrap_admin_key(require_gateway_admin_key())
     yield
@@ -117,20 +130,10 @@ try:
         host=REDIS_HOST,
         port=REDIS_PORT,
         password=REDIS_PASSWORD,
-        decode_responses=True
+        decode_responses=True,
+        socket_connect_timeout=0.5,
+        socket_timeout=0.5,
     )
-    # Ping Redis to test connection
-    async def test_redis():
-        global redis_available
-        try:
-            await redis_client.ping()
-            redis_available = True
-            logger.info("🔌 Connected to Redis for Enterprise Rate Limiting & Cache.")
-        except Exception as e:
-            redis_available = False
-            logger.warning(f"⚠️ Redis ping failed: {e}. Falling back to local/in-memory limiters.")
-    
-    asyncio.run(test_redis())
 except Exception as e:
     redis_available = False
     logger.warning(f"⚠️ Redis client could not be initialized: {e}. Using In-Memory limiters.")

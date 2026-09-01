@@ -150,6 +150,8 @@ class OfflineRAGEngine:
             port=REDIS_PORT,
             password=REDIS_PASSWORD,
             decode_responses=True,
+            socket_connect_timeout=0.5,
+            socket_timeout=0.5,
         )
 
     def _get_collection_name(self, namespace: str) -> str:
