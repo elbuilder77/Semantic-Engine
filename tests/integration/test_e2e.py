@@ -1,8 +1,8 @@
 """End-to-end integration tests for SES Core with live services.
 
-These tests require Qdrant, Redis, and Ollama running (via docker-compose).
-They verify that the full RAG pipeline works: ingestion, vector storage,
-retrieval, and (optionally) caching.
+These tests require Qdrant and Redis running via Docker Compose. They use the
+default local CPU embedding provider and verify that the full RAG pipeline
+works: ingestion, vector storage, retrieval, and caching.
 """
 
 import asyncio
