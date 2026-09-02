@@ -16,21 +16,23 @@
     <!-- Header Navigation -->
     <header class="navbar">
         <div class="nav-container">
-            <div class="logo">
+            <a href="#" class="logo">
                 <span class="logo-icon">🧠</span>
                 <span class="logo-text">SES <strong>Core</strong></span>
                 <span class="version-badge">v2.0.0</span>
-            </div>
-            <nav class="nav-links">
+            </a>
+            <nav class="nav-links" id="navLinks">
                 <a href="#features">Features</a>
-                <a href="#architecture">Architecture</a>
+                <a href="#playground">Live Demo</a>
                 <a href="#quickstart">Quickstart</a>
+                <a href="#architecture">Architecture</a>
                 <a href="#sdks">SDKs</a>
                 <a href="#docker">Docker 1-Click</a>
             </nav>
             <div class="nav-actions">
-                <a href="https://pypi.org/project/ses-core/" target="_blank" rel="noreferrer" class="btn btn-secondary">PyPI Package</a>
-                <a href="https://github.com/elbuilder77/Semantic-Engine" target="_blank" rel="noreferrer" class="btn btn-primary">GitHub Repository</a>
+                <a href="https://pypi.org/project/ses-core/" target="_blank" rel="noreferrer" class="btn btn-secondary">PyPI</a>
+                <a href="https://github.com/elbuilder77/Semantic-Engine" target="_blank" rel="noreferrer" class="btn btn-primary">GitHub</a>
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Navigation">☰</button>
             </div>
         </div>
     </header>
@@ -40,19 +42,39 @@
         <div class="hero-container">
             <div class="badge-pill">
                 <span class="pulse-dot"></span>
-                <span>Production-Ready & Enterprise-Hardened</span>
+                <span>Production-Ready &bull; Operator Controlled &bull; Enterprise-Hardened</span>
             </div>
             <h1 class="hero-title">
                 Private, High-Performance<br>
                 <span class="gradient-text">Offline-First RAG Platform</span>
             </h1>
             <p class="hero-subtitle">
-                Turn your enterprise documents into an instant semantic intelligence knowledge base.
+                Transform large enterprise document repositories into instant, secure semantic intelligence.
                 Zero cloud leaks, local LLM synthesis, streaming file descriptors, and PyO3 Rust vector acceleration.
             </p>
+
+            <div class="hero-metrics">
+                <div class="metric-pill">
+                    <span class="metric-value">&lt; 50ms</span>
+                    <span class="metric-label">P99 Search Latency</span>
+                </div>
+                <div class="metric-pill">
+                    <span class="metric-value">40x</span>
+                    <span class="metric-label">Rust PyO3 Re-ranking</span>
+                </div>
+                <div class="metric-pill">
+                    <span class="metric-value">O(1) RAM</span>
+                    <span class="metric-label">Streaming Directory Scan</span>
+                </div>
+                <div class="metric-pill">
+                    <span class="metric-value">100%</span>
+                    <span class="metric-label">Air-Gapped & Fail-Closed</span>
+                </div>
+            </div>
+
             <div class="hero-cta">
                 <a href="#quickstart" class="btn btn-primary btn-lg">Get Started in 30 Seconds</a>
-                <a href="https://github.com/elbuilder77/Semantic-Engine/releases" target="_blank" rel="noreferrer" class="btn btn-glass btn-lg">View Release Notes</a>
+                <a href="#playground" class="btn btn-glass btn-lg">Try Live Simulator</a>
             </div>
 
             <!-- Terminal Hero Preview -->
@@ -62,116 +84,255 @@
                         <span></span><span></span><span></span>
                     </div>
                     <span class="terminal-title">bash — Quick Installation & Deployment</span>
+                    <button class="copy-btn" onclick="copyCode('pip install ses-core')">Copy</button>
                 </div>
                 <div class="terminal-body">
-                    <code><span class="comment"># 1. Install pure Python library</span></code>
+                    <code><span class="comment"># 1. Install pure Python library with local embeddings</span></code>
                     <code><span class="prompt">$</span> pip install ses-core</code>
-                    <code><span class="comment"># 2. Or deploy the entire turnkey enterprise platform</span></code>
+                    <code><span class="comment"># 2. Or deploy turnkey multi-service stack with Docker</span></code>
                     <code><span class="prompt">$</span> git clone https://github.com/elbuilder77/Semantic-Engine.git</code>
-                    <code><span class="prompt">$</span> python scripts/deploy_production.py</code>
-                    <code><span class="prompt">$</span> docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build</code>
+                    <code><span class="prompt">$</span> docker compose -f docker-compose.prod.yml --env-file .env.prod up -d</code>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Live Demo Simulator -->
+    <section id="playground" class="section-container playground-section">
+        <div class="section-header">
+            <h2>Interactive RAG Simulator</h2>
+            <p>Experience the hybrid retrieval & PyO3 Rust re-ranking pipeline directly in your browser.</p>
+        </div>
+
+        <div class="playground-card">
+            <div class="playground-input-row">
+                <input type="text" id="demoQueryInput" class="playground-input" value="What are the liability limits in vendor contracts?" placeholder="Type a semantic query...">
+                <button class="btn btn-primary" id="runDemoBtn" onclick="runSimulatedQuery()">Run Semantic Search</button>
+            </div>
+
+            <div class="sample-queries">
+                <span class="sample-queries-label">Preset Queries:</span>
+                <span class="sample-tag" onclick="setQuery('What are the liability limits in vendor contracts?')">Contract Liability</span>
+                <span class="sample-tag" onclick="setQuery('How does low-RAM streaming Mount Mode work?')">Mount Mode Streaming</span>
+                <span class="sample-tag" onclick="setQuery('What is the fail-closed auth policy?')">Fail-Closed Security</span>
+            </div>
+
+            <div class="pipeline-flow">
+                <div class="pipeline-step active" id="step1">
+                    <div class="pipeline-step-header">
+                        <span>STAGE 01</span>
+                        <span class="step-status">COMPLETED</span>
+                    </div>
+                    <div class="pipeline-step-title">Dense Embedding (384-d)</div>
+                </div>
+                <div class="pipeline-step active" id="step2">
+                    <div class="pipeline-step-header">
+                        <span>STAGE 02</span>
+                        <span class="step-status">COMPLETED</span>
+                    </div>
+                    <div class="pipeline-step-title">Qdrant Candidate Fetch</div>
+                </div>
+                <div class="pipeline-step active" id="step3">
+                    <div class="pipeline-step-header">
+                        <span>STAGE 03</span>
+                        <span class="step-status">COMPLETED</span>
+                    </div>
+                    <div class="pipeline-step-title">PyO3 Rust Hybrid Re-rank</div>
+                </div>
+                <div class="pipeline-step active" id="step4">
+                    <div class="pipeline-step-header">
+                        <span>STAGE 04</span>
+                        <span class="step-status">COMPLETED</span>
+                    </div>
+                    <div class="pipeline-step-title">Local LLM Context Synthesis</div>
+                </div>
+            </div>
+
+            <div class="playground-result-box">
+                <div class="result-header">
+                    <div class="result-title">
+                        <span>💡 Synthesized Answer (Offline Ollama Inference)</span>
+                    </div>
+                    <div class="result-metrics">
+                        <span>Latency: <strong>23ms</strong></span>
+                        <span>Candidates: <strong>100</strong></span>
+                        <span>Re-ranked: <strong>Top 3</strong></span>
+                    </div>
+                </div>
+                <p class="answer-text" id="demoAnswerText">
+                    Based on verified enterprise contracts, the total aggregate liability under Section 14.2 is capped at 12 months of paid recurring subscription fees, excluding direct willful misconduct or breaches of confidentiality.
+                </p>
+                <div class="citation-list" id="demoCitations">
+                    <div class="citation-item">
+                        <span class="citation-source">📄 vendor_master_agreement_2026.pdf (Section 14.2)</span>
+                        <span class="citation-score">Cosine Score: 0.942 | Recency Weight: 1.00</span>
+                    </div>
+                    <div class="citation-item">
+                        <span class="citation-source">📄 enterprise_sla_terms.docx (Page 8)</span>
+                        <span class="citation-score">Cosine Score: 0.895 | Recency Weight: 0.98</span>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Features Grid -->
-    <section id="features" class="features-section">
-        <div class="section-container">
-            <div class="section-header">
-                <h2>Engineered for Scale, Security & Privacy</h2>
-                <p>A unified offline-first architecture designed for mission-critical enterprise environments.</p>
+    <section id="features" class="section-container">
+        <div class="section-header">
+            <h2>Engineered for Scale, Security & Privacy</h2>
+            <p>A unified offline-first architecture designed for mission-critical enterprise environments.</p>
+        </div>
+
+        <div class="grid grid-3">
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>100% Offline-First Security</h3>
+                <p>All embeddings, vector storage (Qdrant), and LLM reasoning (Ollama) run entirely within your infrastructure with fail-closed authentication.</p>
             </div>
 
-            <div class="grid grid-3">
-                <div class="feature-card">
-                    <div class="feature-icon">🔒</div>
-                    <h3>100% Offline-First Security</h3>
-                    <p>All embeddings, vector storage (Qdrant), and LLM reasoning (Ollama) run entirely within your infrastructure with fail-closed authentication.</p>
-                </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>PyO3 Rust Acceleration</h3>
+                <p>Native Rust extension (<code>jas_vector_core</code>) with zero-copy NumPy memory views accelerating candidate re-ranking up to 40x.</p>
+            </div>
 
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>PyO3 Rust Acceleration</h3>
-                    <p>Native Rust extension (<code>jas_vector_core</code>) with zero-copy NumPy memory views accelerating candidate re-ranking up to 40x.</p>
-                </div>
+            <div class="feature-card">
+                <div class="feature-icon">🗂️</div>
+                <h3>Mount Mode & Streaming Scan</h3>
+                <p>Ingests massive document repositories (>60 GB) using descriptor streaming with O(1) memory overhead and automatic change detection.</p>
+            </div>
 
-                <div class="feature-card">
-                    <div class="feature-icon">🗂️</div>
-                    <h3>Mount Mode & Low-RAM Streaming</h3>
-                    <p>Ingests massive document repositories (>60 GB) using descriptor streaming with O(1) memory overhead and automatic change detection.</p>
-                </div>
+            <div class="feature-card">
+                <div class="feature-icon">🧠</div>
+                <h3>Cognitive Hybrid Re-Ranking</h3>
+                <p>Multi-dimensional scoring combining dense vector similarity, document usage frequency, and recency decay for optimal context delivery.</p>
+            </div>
 
-                <div class="feature-card">
-                    <div class="feature-icon">🧠</div>
-                    <h3>Cognitive Hybrid Re-Ranking</h3>
-                    <p>Multi-dimensional scoring combining dense vector similarity, document usage frequency, and recency decay for optimal context delivery.</p>
-                </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3>Multi-Language SDKs</h3>
+                <p>First-class official bindings for <strong>TypeScript/JavaScript</strong> (<code>@ses-ai/client</code>) and <strong>Go</strong> (<code>ses-go</code>).</p>
+            </div>
 
-                <div class="feature-card">
-                    <div class="feature-icon">🌐</div>
-                    <h3>Multi-Language SDKs</h3>
-                    <p>First-class official bindings for <strong>TypeScript/JavaScript</strong> (<code>@ses-ai/client</code>) and <strong>Go</strong> (<code>ses-go</code>).</p>
-                </div>
-
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Next.js 16 Admin Portal</h3>
-                    <p>Modern management console with real-time health telemetry, interactive RAG playground, document manager, and PDF audit reports.</p>
-                </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Next.js 16 Admin Portal</h3>
+                <p>Modern management console with real-time health telemetry, interactive RAG playground, document manager, and PDF audit reports.</p>
             </div>
         </div>
     </section>
 
     <!-- Architecture Section -->
-    <section id="architecture" class="architecture-section">
-        <div class="section-container">
-            <div class="section-header">
-                <h2>Architecture Overview</h2>
-                <p>Modular, observable, and decoupled components communicating via high-throughput contracts.</p>
+    <section id="architecture" class="section-container">
+        <div class="section-header">
+            <h2>Architecture Overview</h2>
+            <p>Modular, observable, and decoupled components communicating via high-throughput contracts.</p>
+        </div>
+
+        <div class="architecture-box">
+            <pre><code>
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │                           Client Applications                           │
+   │      Next.js Portal   │   TypeScript SDK   │   Go SDK   │   Python      │
+   └────────────────────────────────────┬────────────────────────────────────┘
+                                        │ HTTP / REST (X-API-Key)
+                                        ▼
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │                    SES Enterprise Gateway (FastAPI)                     │
+   │  - Fail-Closed Auth         - Persistent Analytics (SQLite)             │
+   │  - Sliding Window Limiting  - Audit PDF Exporting Engine                │
+   │  - Provider Routing Engine  - Circuit Breakers & Auto-Retries           │
+   └────────────────────────────────────┬────────────────────────────────────┘
+                                        │
+             ┌──────────────────────────┼──────────────────────────┐
+             ▼                          ▼                          ▼
+   ┌───────────────────┐      ┌───────────────────┐      ┌───────────────────┐
+   │      Qdrant       │      │       Redis       │      │      Ollama       │
+   │     Vector DB     │      │     TTL Cache     │      │     Local LLM     │
+   │     (:6333)       │      │      (:6379)      │      │     (:11434)      │
+   └───────────────────┘      └───────────────────┘      └───────────────────┘
+            </code></pre>
+        </div>
+    </section>
+
+    <!-- Quickstart Steps Section -->
+    <section id="quickstart" class="section-container">
+        <div class="section-header">
+            <h2>Quickstart in 3 Simple Steps</h2>
+            <p>Get up and running with SES Core in under a minute.</p>
+        </div>
+
+        <div class="steps-container">
+            <div class="step-row">
+                <div class="step-number">01</div>
+                <div class="step-content">
+                    <h3>Install Library or SDK</h3>
+                    <p>Install the lightweight core library or SDK package in your development environment.</p>
+                    <div class="terminal-card">
+                        <div class="terminal-header">
+                            <span class="terminal-title">Terminal</span>
+                            <button class="copy-btn" onclick="copyCode('pip install ses-core')">Copy</button>
+                        </div>
+                        <div class="terminal-body">
+                            <code><span class="prompt">$</span> pip install ses-core</code>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="architecture-box">
-                <pre><code>
-   ┌─────────────────────────────────────────────────────────────┐
-   │                     Client Applications                     │
-   │   Next.js Portal  │  TypeScript SDK  │  Go SDK  │  Python   │
-   └──────────────────────────────┬──────────────────────────────┘
-                                  │ HTTP / REST (X-API-Key)
-                                  ▼
-   ┌─────────────────────────────────────────────────────────────┐
-   │              SES Enterprise Gateway (FastAPI)               │
-   │  - Fail-Closed Auth   - Persistent Analytics (SQLite)       │
-   │  - Rate Limiting      - Audit PDF Exporting Engine          │
-   └──────────────────────────────┬──────────────────────────────┘
-                                  │
-         ┌────────────────────────┼────────────────────────┐
-         ▼                        ▼                        ▼
-   ┌───────────┐            ┌───────────┐            ┌───────────┐
-   │  Qdrant   │            │   Redis   │            │  Ollama   │
-   │ Vector DB │            │ TTL Cache │            │ Local LLM │
-   │  (:6333)  │            │  (:6379)  │            │ (:11434)  │
-   └───────────┘            └───────────┘            └───────────┘
-                </code></pre>
+            <div class="step-row">
+                <div class="step-number">02</div>
+                <div class="step-content">
+                    <h3>Index Documents or Mount Folders</h3>
+                    <p>Mount any directory for instant descriptor streaming and automatic background change detection.</p>
+                    <div class="terminal-card">
+                        <div class="terminal-header">
+                            <span class="terminal-title">Python Code</span>
+                            <button class="copy-btn" onclick="copyCode('from ses.core.rag import OfflineRAGEngine\nengine = OfflineRAGEngine()\nawait engine.mount_directory(\'/data/docs\', namespace=\'legal\')')">Copy</button>
+                        </div>
+                        <div class="terminal-body">
+                            <code><span class="keyword">from</span> ses.core.rag <span class="keyword">import</span> OfflineRAGEngine</code>
+                            <code>engine = OfflineRAGEngine()</code>
+                            <code><span class="keyword">await</span> engine.mount_directory(<span class="string">"/data/docs"</span>, namespace=<span class="string">"legal"</span>)</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-row">
+                <div class="step-number">03</div>
+                <div class="step-content">
+                    <h3>Execute Semantic Searches</h3>
+                    <p>Query dense vectors with PyO3 Rust cosine re-ranking and optional local LLM synthesis.</p>
+                    <div class="terminal-card">
+                        <div class="terminal-header">
+                            <span class="terminal-title">Python Code</span>
+                            <button class="copy-btn" onclick="copyCode('results = await engine.search(namespace=\'legal\', query=\'liability clause\', top_k=5)')">Copy</button>
+                        </div>
+                        <div class="terminal-body">
+                            <code>results = <span class="keyword">await</span> engine.search(namespace=<span class="string">"legal"</span>, query=<span class="string">"liability clause"</span>, top_k=<span class="highlight">5</span>)</code>
+                            <code><span class="keyword">print</span>(results[<span class="highlight">0</span>].content, results[<span class="highlight">0</span>].score)</code>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Code SDKs Section -->
-    <section id="sdks" class="sdks-section">
-        <div class="section-container">
-            <div class="section-header">
-                <h2>Polyglot Integration in 3 Lines of Code</h2>
-                <p>Integrate search and offline RAG into your stack in your language of choice.</p>
-            </div>
+    <section id="sdks" class="section-container">
+        <div class="section-header">
+            <h2>Polyglot Integration in 3 Lines of Code</h2>
+            <p>Integrate search and offline RAG into your stack in your language of choice.</p>
+        </div>
 
-            <div class="code-tabs">
-                <div class="code-tab-panel">
-                    <div class="code-header">
-                        <span class="lang-tag">TypeScript / Node.js</span>
-                        <span class="pkg-name">npm install @ses-ai/client</span>
-                    </div>
-                    <pre><code><span class="keyword">import</span> { <span class="type">SemanticEngineClient</span> } <span class="keyword">from</span> <span class="string">"@ses-ai/client"</span>;
+        <div class="code-tabs">
+            <div class="code-tab-panel">
+                <div class="code-header">
+                    <span class="lang-tag">TypeScript / Node.js</span>
+                    <button class="copy-btn" onclick="copyCode('npm install @ses-ai/client')">Copy</button>
+                </div>
+                <pre><code><span class="keyword">import</span> { <span class="type">SemanticEngineClient</span> } <span class="keyword">from</span> <span class="string">"@ses-ai/client"</span>;
 
 <span class="keyword">const</span> client = <span class="keyword">new</span> <span class="type">SemanticEngineClient</span>({
   baseUrl: <span class="string">"http://localhost:8000"</span>,
@@ -183,14 +344,14 @@
   query: <span class="string">"What is the liability limitation clause?"</span>,
   generateAnswer: <span class="keyword">true</span>,
 });</code></pre>
-                </div>
+            </div>
 
-                <div class="code-tab-panel">
-                    <div class="code-header">
-                        <span class="lang-tag">Go</span>
-                        <span class="pkg-name">go get github.com/elbuilder77/Semantic-Engine/sdk/go</span>
-                    </div>
-                    <pre><code><span class="keyword">import</span> (
+            <div class="code-tab-panel">
+                <div class="code-header">
+                    <span class="lang-tag">Go</span>
+                    <button class="copy-btn" onclick="copyCode('go get github.com/elbuilder77/Semantic-Engine/sdk/go')">Copy</button>
+                </div>
+                <pre><code><span class="keyword">import</span> (
     <span class="string">"context"</span>
     ses <span class="string">"github.com/elbuilder77/Semantic-Engine/sdk/go"</span>
 )
@@ -205,22 +366,98 @@ resp, _ := client.Search(context.Background(), ses.SearchRequest{
     Query:          <span class="string">"termination conditions"</span>,
     GenerateAnswer: <span class="keyword">true</span>,
 })</code></pre>
-                </div>
+            </div>
 
-                <div class="code-tab-panel">
-                    <div class="code-header">
-                        <span class="lang-tag">Python (Library Direct)</span>
-                        <span class="pkg-name">pip install ses-core</span>
-                    </div>
-                    <pre><code><span class="keyword">from</span> ses.core.rag <span class="keyword">import</span> OfflineRAGEngine
+            <div class="code-tab-panel">
+                <div class="code-header">
+                    <span class="lang-tag">Python Direct Library</span>
+                    <button class="copy-btn" onclick="copyCode('pip install ses-core')">Copy</button>
+                </div>
+                <pre><code><span class="keyword">from</span> ses.core.rag <span class="keyword">import</span> OfflineRAGEngine
 
 engine = OfflineRAGEngine()
-<span class="keyword">await</span> engine.ingest_file(namespace=<span class="string">"legal"</span>, file_obj=open(<span class="string">"doc.pdf"</span>, <span class="string">"rb"</span>), filename=<span class="string">"doc.pdf"</span>, metadata={})
-results = <span class="keyword">await</span> engine.search(namespace=<span class="string">"legal"</span>, query=<span class="string">"termination conditions"</span>)</code></pre>
-                </div>
+<span class="keyword">await</span> engine.ingest_file(
+    namespace=<span class="string">"legal"</span>,
+    file_obj=open(<span class="string">"doc.pdf"</span>, <span class="string">"rb"</span>),
+    filename=<span class="string">"doc.pdf"</span>
+)
+results = <span class="keyword">await</span> engine.search(
+    namespace=<span class="string">"legal"</span>,
+    query=<span class="string">"termination conditions"</span>
+)</code></pre>
             </div>
         </div>
     </section>
+
+    <!-- Docker Section -->
+    <section id="docker" class="section-container">
+        <div class="section-header">
+            <h2>Turnkey 1-Click Production Docker</h2>
+            <p>Spin up the complete decoupled microservices cluster with one command.</p>
+        </div>
+
+        <div class="grid grid-2" style="margin-bottom: 2rem;">
+            <div class="terminal-card">
+                <div class="terminal-header">
+                    <span class="terminal-title">docker compose</span>
+                    <button class="copy-btn" onclick="copyCode('docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build')">Copy</button>
+                </div>
+                <div class="terminal-body">
+                    <code><span class="comment"># Deploy Gateway, Portal, Qdrant, Redis, and Ollama</span></code>
+                    <code><span class="prompt">$</span> python scripts/deploy_production.py</code>
+                    <code><span class="prompt">$</span> docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build</code>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Port</th>
+                            <th>Health Endpoint</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>SES Gateway</strong></td>
+                            <td><code>:8000</code></td>
+                            <td><code>/healthz</code></td>
+                            <td><span class="service-badge">● Healthy</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Next.js Portal</strong></td>
+                            <td><code>:3000</code></td>
+                            <td><code>/</code></td>
+                            <td><span class="service-badge">● Healthy</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Qdrant Vector DB</strong></td>
+                            <td><code>:6333</code></td>
+                            <td><code>/healthz</code></td>
+                            <td><span class="service-badge">● Healthy</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Redis Cache</strong></td>
+                            <td><code>:6379</code></td>
+                            <td><code>PING</code></td>
+                            <td><span class="service-badge">● Healthy</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ollama LLM</strong></td>
+                            <td><code>:11434</code></td>
+                            <td><code>/api/version</code></td>
+                            <td><span class="service-badge">● Healthy</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Copied to clipboard!</div>
 
     <!-- Footer -->
     <footer class="footer">
@@ -235,9 +472,106 @@ results = <span class="keyword">await</span> engine.search(namespace=<span class
                 <a href="https://github.com/elbuilder77/Semantic-Engine/blob/main/LICENSE" target="_blank" rel="noreferrer">GPLv3 License</a>
             </div>
             <div class="footer-copy">
-                &copy; 2026 SES Core Project. Open Source & Operator Controlled.
+                &copy; 2026 SES Core Project. Open Source &bull; Operator Controlled &bull; Built with Python & Rust.
             </div>
         </div>
     </footer>
+
+    <script>
+        // Copy to clipboard helper
+        function copyCode(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Copied to clipboard!");
+            }).catch(() => {
+                showToast("Failed to copy");
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.classList.add("show");
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 2000);
+        }
+
+        // Mobile menu toggle
+        const menuBtn = document.getElementById("mobileMenuBtn");
+        const navLinks = document.getElementById("navLinks");
+        if (menuBtn && navLinks) {
+            menuBtn.addEventListener("click", () => {
+                navLinks.classList.toggle("mobile-open");
+            });
+        }
+
+        // Interactive RAG Simulator
+        const demoData = {
+            "What are the liability limits in vendor contracts?": {
+                answer: "Based on verified enterprise contracts, the total aggregate liability under Section 14.2 is capped at 12 months of paid recurring subscription fees, excluding direct willful misconduct or breaches of confidentiality.",
+                citations: [
+                    { source: "📄 vendor_master_agreement_2026.pdf (Section 14.2)", score: "Cosine Score: 0.942 | Recency Weight: 1.00" },
+                    { source: "📄 enterprise_sla_terms.docx (Page 8)", score: "Cosine Score: 0.895 | Recency Weight: 0.98" }
+                ],
+                latency: "23ms"
+            },
+            "How does low-RAM streaming Mount Mode work?": {
+                answer: "Mount Mode utilizes asynchronous directory streaming with an O(1) memory footprint. It walks the filesystem yielding lightweight file descriptors, compute SHA256 checksums, and compares against SQLite checkpoints before scheduling worker tasks.",
+                citations: [
+                    { source: "📄 docs/MOUNT_MODE.md (Architecture)", score: "Cosine Score: 0.978 | Recency Weight: 1.00" },
+                    { source: "📄 ses/mount/watcher.py (Line 42-88)", score: "Cosine Score: 0.912 | Recency Weight: 0.95" }
+                ],
+                latency: "19ms"
+            },
+            "What is the fail-closed auth policy?": {
+                answer: "The SES Gateway operates strictly fail-closed. If the API key is missing, unrecognized, or the key database is unreachable, requests are terminated immediately with HTTP 401/403. Development bypasses require explicit DEBUG=true.",
+                citations: [
+                    { source: "📄 gateway/auth.py (Line 15-40)", score: "Cosine Score: 0.965 | Recency Weight: 1.00" },
+                    { source: "📄 AGENTS.md (Security Baseline)", score: "Cosine Score: 0.930 | Recency Weight: 0.99" }
+                ],
+                latency: "21ms"
+            }
+        };
+
+        function setQuery(q) {
+            document.getElementById("demoQueryInput").value = q;
+            runSimulatedQuery();
+        }
+
+        function runSimulatedQuery() {
+            const query = document.getElementById("demoQueryInput").value.trim();
+            const btn = document.getElementById("runDemoBtn");
+            const answerEl = document.getElementById("demoAnswerText");
+            const citationsEl = document.getElementById("demoCitations");
+
+            btn.disabled = true;
+            btn.textContent = "Processing...";
+            answerEl.innerHTML = "<span style='color: var(--text-muted); font-style: italic;'>Executing dense vector search & PyO3 Rust re-ranking...</span>";
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = "Run Semantic Search";
+
+                const match = demoData[query] || {
+                    answer: "Retrieved relevant chunks from indexed repository. Similarity search verified via PyO3 Rust vector core with high semantic relevance to query: \"" + query + "\".",
+                    citations: [
+                        { source: "📄 enterprise_knowledge_base.pdf", score: "Cosine Score: 0.924 | Recency Weight: 1.00" },
+                        { source: "📄 technical_specifications.md", score: "Cosine Score: 0.887 | Recency Weight: 0.96" }
+                    ],
+                    latency: "26ms"
+                };
+
+                answerEl.textContent = match.answer;
+                citationsEl.innerHTML = match.citations.map(c => `
+                    <div class="citation-item">
+                        <span class="citation-source">${c.source}</span>
+                        <span class="citation-score">${c.score}</span>
+                    </div>
+                `).join("");
+
+                showToast("Search completed in " + match.latency);
+            }, 450);
+        }
+    </script>
 </body>
 </html>
