@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Semantic Engine (SES Core) — Offline-First Enterprise RAG Platform</title>
     <meta name="description" content="Offline-first RAG engine for private document intelligence. Built with Python, Rust PyO3, Qdrant, Redis, Ollama, Next.js, and multi-language SDKs.">
+    <link rel="icon" type="image/png" href="logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -17,7 +18,7 @@
     <header class="navbar">
         <div class="nav-container">
             <a href="#" class="logo">
-                <span class="logo-icon">🧠</span>
+                <img src="logo.png" alt="SES Core Logo" class="logo-img">
                 <span class="logo-text">SES <strong>Core</strong></span>
                 <span class="version-badge">v2.0.0</span>
             </a>
@@ -25,6 +26,7 @@
                 <a href="#features">Features</a>
                 <a href="#playground">Live Demo</a>
                 <a href="#quickstart">Quickstart</a>
+                <a href="#cli">CLI & Aliases</a>
                 <a href="#architecture">Architecture</a>
                 <a href="#sdks">SDKs</a>
                 <a href="#docker">Docker 1-Click</a>
@@ -83,15 +85,16 @@
                     <div class="terminal-dots">
                         <span></span><span></span><span></span>
                     </div>
-                    <span class="terminal-title">bash — Quick Installation & Deployment</span>
-                    <button class="copy-btn" onclick="copyCode('pip install ses-core')">Copy</button>
+                    <span class="terminal-title">bash — Quick CLI & Python Aliases</span>
+                    <button class="copy-btn" onclick="copyCode('pip install ses-core\nses mount /data/docs --namespace legal\nses search &quot;liability clause&quot; --namespace legal')">Copy</button>
                 </div>
                 <div class="terminal-body">
-                    <code><span class="comment"># 1. Install pure Python library with local embeddings</span></code>
+                    <code><span class="comment"># 1. Install CLI & Python RAG library</span></code>
                     <code><span class="prompt">$</span> pip install ses-core</code>
-                    <code><span class="comment"># 2. Or deploy turnkey multi-service stack with Docker</span></code>
-                    <code><span class="prompt">$</span> git clone https://github.com/elbuilder77/Semantic-Engine.git</code>
-                    <code><span class="prompt">$</span> docker compose -f docker-compose.prod.yml --env-file .env.prod up -d</code>
+                    <code><span class="comment"># 2. Mount & index folder in 1 simple command</span></code>
+                    <code><span class="prompt">$</span> ses mount /data/docs --namespace legal</code>
+                    <code><span class="comment"># 3. Query documents via terminal</span></code>
+                    <code><span class="prompt">$</span> ses search "liability limitation clause" --namespace legal</code>
                 </div>
             </div>
         </div>
@@ -210,14 +213,53 @@
 
             <div class="feature-card">
                 <div class="feature-icon">🌐</div>
-                <h3>Multi-Language SDKs</h3>
-                <p>First-class official bindings for <strong>TypeScript/JavaScript</strong> (<code>@ses-ai/client</code>) and <strong>Go</strong> (<code>ses-go</code>).</p>
+                <h3>Multi-Language SDKs & CLI</h3>
+                <p>Official bindings for <strong>TypeScript</strong> (<code>@ses-ai/client</code>), <strong>Go</strong> (<code>ses-go</code>), and instant <code>ses</code> CLI tools.</p>
             </div>
 
             <div class="feature-card">
                 <div class="feature-icon">📊</div>
                 <h3>Next.js 16 Admin Portal</h3>
                 <p>Modern management console with real-time health telemetry, interactive RAG playground, document manager, and PDF audit reports.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CLI & Aliases Section -->
+    <section id="cli" class="section-container">
+        <div class="section-header">
+            <h2>Unified CLI & Simplified Python API</h2>
+            <p>Everything simplified into intuitive aliases for terminal and code.</p>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="terminal-card">
+                <div class="terminal-header">
+                    <span class="terminal-title">CLI Terminal (`ses` command)</span>
+                    <button class="copy-btn" onclick="copyCode('ses mount /data/docs --namespace legal\nses search &quot;liability clause&quot; --namespace legal\nses doctor')">Copy</button>
+                </div>
+                <div class="terminal-body">
+                    <code><span class="comment"># Mount & index directory with auto-scanning</span></code>
+                    <code><span class="prompt">$</span> ses mount /data/docs --namespace legal</code>
+                    <code><span class="comment"># Search across indexed collections</span></code>
+                    <code><span class="prompt">$</span> ses search "liability clause" --namespace legal</code>
+                    <code><span class="comment"># Run health diagnostic on Qdrant, Redis & LLM</span></code>
+                    <code><span class="prompt">$</span> ses doctor</code>
+                </div>
+            </div>
+
+            <div class="terminal-card">
+                <div class="terminal-header">
+                    <span class="terminal-title">Python 1-Line Aliases (`import ses`)</span>
+                    <button class="copy-btn" onclick="copyCode('import ses\n\nawait ses.mount(&quot;/data/docs&quot;, namespace=&quot;legal&quot;)\nresults = await ses.search(&quot;liability clause&quot;, namespace=&quot;legal&quot;)')">Copy</button>
+                </div>
+                <div class="terminal-body">
+                    <code><span class="keyword">import</span> ses</code>
+                    <code><span class="comment"># Simplified top-level mount & search helpers</span></code>
+                    <code><span class="keyword">await</span> ses.mount(<span class="string">"/data/docs"</span>, namespace=<span class="string">"legal"</span>)</code>
+                    <code>results = <span class="keyword">await</span> ses.search(<span class="string">"liability clause"</span>, namespace=<span class="string">"legal"</span>)</code>
+                    <code><span class="keyword">print</span>(results[<span class="highlight">0</span>].content, results[<span class="highlight">0</span>].score)</code>
+                </div>
             </div>
         </div>
     </section>
@@ -233,7 +275,7 @@
             <pre><code>
    ┌─────────────────────────────────────────────────────────────────────────┐
    │                           Client Applications                           │
-   │      Next.js Portal   │   TypeScript SDK   │   Go SDK   │   Python      │
+   │    Next.js Portal  │  `ses` CLI  │  TypeScript SDK  │  Go SDK  │ Python │
    └────────────────────────────────────┬────────────────────────────────────┘
                                         │ HTTP / REST (X-API-Key)
                                         ▼
@@ -266,8 +308,8 @@
             <div class="step-row">
                 <div class="step-number">01</div>
                 <div class="step-content">
-                    <h3>Install Library or SDK</h3>
-                    <p>Install the lightweight core library or SDK package in your development environment.</p>
+                    <h3>Install Library or CLI</h3>
+                    <p>Install the lightweight core library with built-in CLI tool in your environment.</p>
                     <div class="terminal-card">
                         <div class="terminal-header">
                             <span class="terminal-title">Terminal</span>
@@ -287,13 +329,11 @@
                     <p>Mount any directory for instant descriptor streaming and automatic background change detection.</p>
                     <div class="terminal-card">
                         <div class="terminal-header">
-                            <span class="terminal-title">Python Code</span>
-                            <button class="copy-btn" onclick="copyCode('from ses.core.rag import OfflineRAGEngine\nengine = OfflineRAGEngine()\nawait engine.mount_directory(\'/data/docs\', namespace=\'legal\')')">Copy</button>
+                            <span class="terminal-title">Terminal / Python</span>
+                            <button class="copy-btn" onclick="copyCode('ses mount /data/docs --namespace legal')">Copy</button>
                         </div>
                         <div class="terminal-body">
-                            <code><span class="keyword">from</span> ses.core.rag <span class="keyword">import</span> OfflineRAGEngine</code>
-                            <code>engine = OfflineRAGEngine()</code>
-                            <code><span class="keyword">await</span> engine.mount_directory(<span class="string">"/data/docs"</span>, namespace=<span class="string">"legal"</span>)</code>
+                            <code><span class="prompt">$</span> ses mount /data/docs --namespace legal</code>
                         </div>
                     </div>
                 </div>
@@ -306,12 +346,11 @@
                     <p>Query dense vectors with PyO3 Rust cosine re-ranking and optional local LLM synthesis.</p>
                     <div class="terminal-card">
                         <div class="terminal-header">
-                            <span class="terminal-title">Python Code</span>
-                            <button class="copy-btn" onclick="copyCode('results = await engine.search(namespace=\'legal\', query=\'liability clause\', top_k=5)')">Copy</button>
+                            <span class="terminal-title">Terminal / Python</span>
+                            <button class="copy-btn" onclick="copyCode('ses search &quot;liability clause&quot; --namespace legal')">Copy</button>
                         </div>
                         <div class="terminal-body">
-                            <code>results = <span class="keyword">await</span> engine.search(namespace=<span class="string">"legal"</span>, query=<span class="string">"liability clause"</span>, top_k=<span class="highlight">5</span>)</code>
-                            <code><span class="keyword">print</span>(results[<span class="highlight">0</span>].content, results[<span class="highlight">0</span>].score)</code>
+                            <code><span class="prompt">$</span> ses search "liability clause" --namespace legal</code>
                         </div>
                     </div>
                 </div>
@@ -370,20 +409,19 @@ resp, _ := client.Search(context.Background(), ses.SearchRequest{
 
             <div class="code-tab-panel">
                 <div class="code-header">
-                    <span class="lang-tag">Python Direct Library</span>
-                    <button class="copy-btn" onclick="copyCode('pip install ses-core')">Copy</button>
+                    <span class="lang-tag">Python (Simplified Aliases)</span>
+                    <button class="copy-btn" onclick="copyCode('import ses\n\nawait ses.mount(&quot;/data/docs&quot;, namespace=&quot;legal&quot;)\nresults = await ses.search(&quot;termination conditions&quot;, namespace=&quot;legal&quot;)')">Copy</button>
                 </div>
-                <pre><code><span class="keyword">from</span> ses.core.rag <span class="keyword">import</span> OfflineRAGEngine
+                <pre><code><span class="keyword">import</span> ses
 
-engine = OfflineRAGEngine()
-<span class="keyword">await</span> engine.ingest_file(
+<span class="comment"># 1-Line Mount Mode Indexing</span>
+<span class="keyword">await</span> ses.mount(<span class="string">"/data/docs"</span>, namespace=<span class="string">"legal"</span>)
+
+<span class="comment"># 1-Line Semantic Search with Rust PyO3</span>
+results = <span class="keyword">await</span> ses.search(
+    query=<span class="string">"termination conditions"</span>,
     namespace=<span class="string">"legal"</span>,
-    file_obj=open(<span class="string">"doc.pdf"</span>, <span class="string">"rb"</span>),
-    filename=<span class="string">"doc.pdf"</span>
-)
-results = <span class="keyword">await</span> engine.search(
-    namespace=<span class="string">"legal"</span>,
-    query=<span class="string">"termination conditions"</span>
+    top_k=<span class="highlight">5</span>
 )</code></pre>
             </div>
         </div>
@@ -463,7 +501,7 @@ results = <span class="keyword">await</span> engine.search(
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-brand">
-                <span class="logo-icon">🧠</span>
+                <img src="logo.png" alt="SES Core Logo" class="footer-logo-img">
                 <span class="logo-text">Semantic Engine (SES Core)</span>
             </div>
             <div class="footer-links">
@@ -519,7 +557,7 @@ results = <span class="keyword">await</span> engine.search(
                 answer: "Mount Mode utilizes asynchronous directory streaming with an O(1) memory footprint. It walks the filesystem yielding lightweight file descriptors, compute SHA256 checksums, and compares against SQLite checkpoints before scheduling worker tasks.",
                 citations: [
                     { source: "📄 docs/MOUNT_MODE.md (Architecture)", score: "Cosine Score: 0.978 | Recency Weight: 1.00" },
-                    { source: "📄 ses/mount/watcher.py (Line 42-88)", score: "Cosine Score: 0.912 | Recency Weight: 0.95" }
+                    { source: "📄 ses/watcher/scanner.py (Generator Stream)", score: "Cosine Score: 0.912 | Recency Weight: 0.95" }
                 ],
                 latency: "19ms"
             },
