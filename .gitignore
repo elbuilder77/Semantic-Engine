@@ -191,6 +191,8 @@ CLAUDE.md
 *.swo
 
 # Desktop and operating-system metadata
+
+# Desktop and operating-system metadata
 .DS_Store
 ._*
 .Spotlight-V100/
@@ -199,3 +201,6 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 _Auditoría*
+Captura de pantalla*
+Screenshot*
+screenshot*
