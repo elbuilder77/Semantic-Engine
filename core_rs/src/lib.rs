@@ -2,7 +2,7 @@ use numpy::{PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-fn cosine_similarity_scores_from_slices<'a>(
+pub fn cosine_similarity_scores_from_slices<'a>(
     query_vector: &[f32],
     document_vectors: impl IntoIterator<Item = &'a [f32]>,
     top_k: usize,
@@ -65,7 +65,7 @@ fn cosine_similarity_scores_from_slices<'a>(
     Ok(scores)
 }
 
-fn cosine_similarity_scores(
+pub fn cosine_similarity_scores(
     query_vector: &[f32],
     document_vectors: &[Vec<f32>],
     top_k: usize,
