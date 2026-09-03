@@ -231,6 +231,7 @@ jobs:
         run: |
           CRATE_VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('core_rs/Cargo.toml', 'rb'))['package']['version'])")
           STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --user-agent "Semantic-Engine-release-workflow/1.0 (https://github.com/${{ github.repository }})" \
             "https://crates.io/api/v1/crates/jas_vector_core/$CRATE_VERSION")
           if [ "$STATUS" = "200" ]; then
             echo "Crate version already exists; skipping publication."

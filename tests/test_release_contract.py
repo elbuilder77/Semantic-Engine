@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_release_versions_and_tag_are_consistent():
-    assert validate("v2.0.2") == ("2.0.2", "0.1.0")
+    assert validate("v2.0.3") == ("2.0.3", "0.1.0")
 
 
 def test_release_validator_rejects_a_mismatched_tag():
@@ -21,7 +21,7 @@ def test_release_validator_rejects_a_mismatched_tag():
         text=True,
     )
     assert result.returncode != 0
-    assert "must match ses-core version v2.0.2" in result.stderr
+    assert "must match ses-core version v2.0.3" in result.stderr
 
 
 def test_ses_core_build_embeds_the_rust_extension():
@@ -49,3 +49,4 @@ def test_release_workflow_uses_oidc_and_fails_if_crates_token_is_missing():
     assert "CARGO_REGISTRY_TOKEN is required" in workflow
     assert "if: env.CARGO_REGISTRY_TOKEN != ''" not in workflow
     assert "Crate version already exists; skipping publication." in workflow
+    assert "Semantic-Engine-release-workflow/1.0" in workflow
