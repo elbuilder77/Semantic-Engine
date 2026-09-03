@@ -8,9 +8,11 @@ import type {
   SearchRequest,
   SearchResponse,
 } from "@/lib/types";
+import { GatewayError, type GatewayErrorKind } from "@/lib/gateway-errors";
 
 const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_SES_API_URL ?? "http://localhost:8000";
+const REQUEST_TIMEOUT_MS = 15_000;
 
 function getConnection(): { baseUrl: string; apiKey: string } {
   const storedUrl =
@@ -22,10 +24,15 @@ function getConnection(): { baseUrl: string; apiKey: string } {
       ? ""
       : localStorage.getItem("ses_api_key") || "";
 
-  return {
-    baseUrl: storedUrl.trim().replace(/\/+$/, ""),
-    apiKey: apiKey.trim(),
-  };
+  const baseUrl = storedUrl.trim().replace(/\/+$/, "");
+  try {
+    const parsed = new URL(baseUrl);
+    if (!(["http:", "https:"].includes(parsed.protocol))) throw new Error();
+  } catch {
+    throw new GatewayError("configuration", "Invalid Gateway URL.");
+  }
+
+  return { baseUrl, apiKey: apiKey.trim() };
 }
 
 function getHeaders(apiKey: string, hasJsonBody: boolean): Headers {
@@ -47,16 +54,63 @@ async function errorMessage(response: Response): Promise<string> {
   return fallback || "Gateway request failed";
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const { baseUrl, apiKey } = getConnection();
-  const hasJsonBody = typeof init.body === "string";
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    cache: "no-store",
-    headers: getHeaders(apiKey, hasJsonBody),
-  });
+function responseErrorKind(status: number): GatewayErrorKind {
+  if (status === 401 || status === 403) return "authentication";
+  if (status === 502 || status === 503 || status === 504) return "dependency";
+  return "gateway";
+}
 
-  if (!response.ok) throw new Error(await errorMessage(response));
+async function fetchGateway(
+  path: string,
+  init: RequestInit = {},
+  requiresApiKey = true,
+): Promise<Response> {
+  const { baseUrl, apiKey } = getConnection();
+  if (requiresApiKey && !apiKey) {
+    throw new GatewayError("configuration", "Missing Gateway API key.");
+  }
+
+  const hasJsonBody = typeof init.body === "string";
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      cache: "no-store",
+      headers: getHeaders(apiKey, hasJsonBody),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new GatewayError(
+        responseErrorKind(response.status),
+        await errorMessage(response),
+        response.status,
+      );
+    }
+    return response;
+  } catch (error) {
+    if (error instanceof GatewayError) throw error;
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new GatewayError("timeout", "Gateway request timed out.");
+    }
+    throw new GatewayError(
+      "network",
+      error instanceof Error ? error.message : "Gateway network request failed.",
+    );
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
+
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  requiresApiKey = true,
+): Promise<T> {
+  const response = await fetchGateway(path, init, requiresApiKey);
+
   return (await response.json()) as T;
 }
 
@@ -71,7 +125,7 @@ function filenameFrom(response: Response): string {
 }
 
 export const api = {
-  getHealth: () => request<HealthResponse>("/api/v1/health"),
+  getHealth: () => request<HealthResponse>("/api/v1/health", {}, false),
 
   getAnalytics: () =>
     request<AnalyticsData>("/api/v1/admin/analytics"),
@@ -88,16 +142,13 @@ export const api = {
     ),
 
   ingestFile: async (file: File) => {
-    const { baseUrl, apiKey } = getConnection();
     const body = new FormData();
     body.append("file", file);
 
-    const response = await fetch(`${baseUrl}/api/v1/ingest/file`, {
+    const response = await fetchGateway("/api/v1/ingest/file", {
       method: "POST",
-      headers: getHeaders(apiKey, false),
       body,
     });
-    if (!response.ok) throw new Error(await errorMessage(response));
     return response.json() as Promise<Record<string, unknown>>;
   },
 
@@ -123,14 +174,10 @@ export const api = {
     ),
 
   downloadReport: async (path: string, payload?: SearchRequest) => {
-    const { baseUrl, apiKey } = getConnection();
-    const response = await fetch(`${baseUrl}${path}`, {
+    const response = await fetchGateway(path, {
       method: payload ? "POST" : "GET",
-      headers: getHeaders(apiKey, Boolean(payload)),
       body: payload ? JSON.stringify(payload) : undefined,
     });
-
-    if (!response.ok) throw new Error(await errorMessage(response));
 
     const blob = await response.blob();
     const objectUrl = URL.createObjectURL(blob);

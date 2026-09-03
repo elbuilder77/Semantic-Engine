@@ -90,6 +90,8 @@ candidatos.
 
 ### Salud
 
+- <code>GET /healthz</code> (liveness del proceso, sin inicializar modelos)
+- <code>GET /readyz</code> (readiness de Qdrant, Redis y Ollama; responde 503 si falta una dependencia)
 - <code>GET /api/v1/health</code>
 
 Reporta estado del Gateway y dependencias. Un estado HTTP exitoso no implica que

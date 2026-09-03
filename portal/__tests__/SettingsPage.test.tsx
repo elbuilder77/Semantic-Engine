@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import SettingsPage from '../app/settings/page';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../lib/api';
+import { GatewayError } from '../lib/gateway-errors';
 
 vi.mock('../lib/api', () => ({
   api: {
@@ -62,6 +63,29 @@ describe('SettingsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Connected')).toBeDefined();
+    });
+  });
+
+  it('shows the concrete authentication failure when connection testing fails', async () => {
+    vi.mocked(api.getHealth).mockResolvedValue({
+      status: 'healthy',
+      timestamp: '2026-09-02T00:00:00Z',
+      services: {},
+    });
+    vi.mocked(api.getAnalytics).mockRejectedValue(
+      new GatewayError('authentication', 'Invalid API key', 403),
+    );
+
+    render(
+      <ToastProvider>
+        <SettingsPage />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/rejected this API key/i).length).toBeGreaterThan(0);
     });
   });
 });

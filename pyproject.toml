@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=77.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.14,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "ses-core"
@@ -47,8 +47,12 @@ Homepage = "https://github.com/elbuilder77/Semantic-Engine"
 Documentation = "https://github.com/elbuilder77/Semantic-Engine#readme"
 Repository = "https://github.com/elbuilder77/Semantic-Engine.git"
 
-[tool.setuptools.packages.find]
-include = ["ses*"]
+[tool.maturin]
+bindings = "pyo3"
+features = ["python"]
+manifest-path = "core_rs/Cargo.toml"
+module-name = "jas_vector_core"
+python-packages = ["ses"]
 
 [tool.pytest.ini_options]
 addopts = '-m "not integration"'

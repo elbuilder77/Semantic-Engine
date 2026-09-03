@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { api } from '../lib/api';
+import { GatewayError } from '../lib/gateway-errors';
 
 describe('Portal API Client (Contract & Integration)', () => {
   const originalFetch = global.fetch;
@@ -172,5 +173,40 @@ describe('Portal API Client (Contract & Integration)', () => {
     } as Response);
 
     await expect(api.search({ query: 'test' })).rejects.toThrow('Invalid or expired API Key');
+  });
+
+  it('rejects protected requests locally when the API key is missing', async () => {
+    localStorage.removeItem('ses_api_key');
+    global.fetch = vi.fn();
+
+    await expect(api.getAnalytics()).rejects.toMatchObject({
+      kind: 'configuration',
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('classifies service-unavailable responses as dependency failures', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+      json: async () => ({ detail: 'Rate limiting service unavailable.' })
+    } as Response);
+
+    try {
+      await api.search({ query: 'test' });
+      throw new Error('Expected the request to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(GatewayError);
+      expect(error).toMatchObject({ kind: 'dependency', status: 503 });
+    }
+  });
+
+  it('classifies browser fetch failures as network or CORS failures', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(api.search({ query: 'test' })).rejects.toMatchObject({
+      kind: 'network',
+    });
   });
 });

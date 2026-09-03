@@ -6,15 +6,21 @@ import { AnalyticsData, HealthResponse } from "@/lib/types";
 import { MetricCard } from "@/components/MetricCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ConnectionErrorState } from "@/components/ConnectionErrorState";
+import { gatewayErrorMessage } from "@/lib/gateway-errors";
 import { Search, Database, Zap, KeyRound, Activity } from "lucide-react";
 
 export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
+      setError(null);
       try {
         const [analyticsData, healthData] = await Promise.all([
           api.getAnalytics(),
@@ -24,12 +30,15 @@ export default function DashboardPage() {
         setHealth(healthData);
       } catch (err) {
         console.error(err);
+        setAnalytics(null);
+        setHealth(null);
+        setError(gatewayErrorMessage(err));
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, []);
+  }, [reloadKey]);
 
   if (loading) return <LoadingSpinner text="Loading dashboard metrics..." />;
 
@@ -39,6 +48,14 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-white mb-2">Dashboard</h1>
         <p className="text-slate-400">Overview of your SES Enterprise Gateway.</p>
       </div>
+
+      {error ? (
+        <ConnectionErrorState
+          message={error}
+          onRetry={() => setReloadKey((value) => value + 1)}
+        />
+      ) : (
+        <>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard
@@ -136,6 +153,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

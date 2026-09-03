@@ -7,6 +7,8 @@ import { useToast } from "@/components/Toast";
 import { SearchResult } from "@/components/SearchResult";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { EmptyState } from "@/components/EmptyState";
+import { ConnectionErrorState } from "@/components/ConnectionErrorState";
+import { gatewayErrorMessage } from "@/lib/gateway-errors";
 import { Search as SearchIcon, FileBox, Zap, BrainCircuit } from "lucide-react";
 
 export default function SearchPage() {
@@ -16,6 +18,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [answer, setAnswer] = useState<string | null>(null);
   const [searchStats, setSearchStats] = useState<{ searchTime: number, totalTime: number, rustUsed: boolean } | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   
   // Options
   const [topK, setTopK] = useState(5);
@@ -31,6 +34,7 @@ export default function SearchPage() {
     setAnswer(null);
     setSearchStats(null);
     setResults([]);
+    setSearchError(null);
 
     try {
       const data = await api.search({
@@ -50,7 +54,9 @@ export default function SearchPage() {
       
     } catch (err) {
       console.error(err);
-      toast("Search failed", "error");
+      const message = gatewayErrorMessage(err);
+      setSearchError(message);
+      toast(message, "error");
     } finally {
       setIsSearching(false);
     }
@@ -70,7 +76,7 @@ export default function SearchPage() {
       toast("Report generated and downloaded successfully", "success");
     } catch (err) {
       console.error(err);
-      toast("Failed to generate report", "error");
+      toast(gatewayErrorMessage(err), "error");
     } finally {
       setIsDownloading(false);
     }
@@ -158,6 +164,10 @@ export default function SearchPage() {
         {isSearching ? (
           <div className="mt-12">
             <LoadingSpinner text="Retrieving context and generating response..." />
+          </div>
+        ) : searchError ? (
+          <div className="mt-12">
+            <ConnectionErrorState message={searchError} onRetry={() => void handleSearch()} />
           </div>
         ) : searchStats ? (
           <div className="space-y-6">
