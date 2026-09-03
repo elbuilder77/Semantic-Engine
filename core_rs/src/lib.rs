@@ -1,5 +1,8 @@
+#[cfg(feature = "python")]
 use numpy::{PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
+#[cfg(feature = "python")]
 use pyo3::exceptions::PyValueError;
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
 
 pub fn cosine_similarity_scores_from_slices<'a>(
@@ -79,12 +82,14 @@ pub fn cosine_similarity_scores(
     )
 }
 
+#[cfg(feature = "python")]
 fn as_python_value_error(error: String) -> PyErr {
     PyValueError::new_err(error)
 }
 
 /// Calcula la similitud de coseno entre un vector de consulta y una matriz de documentos.
 /// Retorna los \u00edndices y scores ordenados de mayor a menor relevancia.
+#[cfg(feature = "python")]
 #[pyfunction]
 fn cosine_similarity_search(
     query_vector: Vec<f32>,
@@ -96,6 +101,7 @@ fn cosine_similarity_search(
 }
 
 /// Ruta sin copias para los ndarrays contiguos usados por el motor RAG.
+#[cfg(feature = "python")]
 #[pyfunction]
 fn cosine_similarity_search_numpy(
     query_vector: PyReadonlyArray1<'_, f32>,
@@ -130,6 +136,7 @@ fn cosine_similarity_search_numpy(
         .map_err(as_python_value_error)
 }
 
+#[cfg(feature = "python")]
 #[pyfunction]
 fn batch_cosine_search(
     queries: Vec<Vec<f32>>,
@@ -145,6 +152,7 @@ fn batch_cosine_search(
     Ok(batch_results)
 }
 
+#[cfg(feature = "python")]
 #[pyfunction]
 fn cosine_similarity_search_with_threshold(
     query_vector: Vec<f32>,
@@ -157,6 +165,7 @@ fn cosine_similarity_search_with_threshold(
 }
 
 /// M\u00f3dulo Python expuesto
+#[cfg(feature = "python")]
 #[pymodule]
 fn jas_vector_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cosine_similarity_search, m)?)?;
