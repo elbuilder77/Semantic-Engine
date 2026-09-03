@@ -28,11 +28,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel, Field
+from qdrant_client import AsyncQdrantClient
 
 # Core imports
 from ses.core.rag import get_vector_service, OfflineRAGEngine
 from ses.core.llm import LocalLLMProvider
-from ses.config import DEBUG, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+from ses.config import (
+    DEBUG,
+    OLLAMA_BASE_URL,
+    QDRANT_API_KEY,
+    QDRANT_URL,
+    REDIS_HOST,
+    REDIS_PASSWORD,
+    REDIS_PORT,
+)
 
 # Database imports
 from gateway.database import get_database_adapter
@@ -64,9 +73,13 @@ def require_gateway_admin_key() -> str:
 
 
 def configured_cors_origins() -> List[str]:
-    raw_origins = os.getenv(
-        "GATEWAY_CORS_ORIGINS",
-        "http://127.0.0.1:8000,http://localhost:8000,http://localhost:3000",
+    raw_origins = (
+        os.getenv("GATEWAY_CORS_ORIGINS", "").strip()
+        or os.getenv("CORS_ALLOWED_ORIGINS", "").strip()
+        or (
+            "http://127.0.0.1:8000,http://localhost:8000,"
+            "http://127.0.0.1:3000,http://localhost:3000"
+        )
     )
     origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
     if "*" in origins:
@@ -124,6 +137,8 @@ API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 redis_available = False
 redis_client = None
 
+_HEALTH_PROBE_TIMEOUT_SECONDS = 2.0
+
 try:
     import redis.asyncio as redis
     redis_client = redis.Redis(
@@ -137,6 +152,82 @@ try:
 except Exception as e:
     redis_available = False
     logger.warning(f"⚠️ Redis client could not be initialized: {e}. Using In-Memory limiters.")
+
+
+async def _probe_qdrant() -> bool:
+    """Probe Qdrant without constructing the RAG engine or embedding model."""
+    client = None
+    try:
+        client = AsyncQdrantClient(
+            url=QDRANT_URL,
+            api_key=QDRANT_API_KEY,
+            timeout=_HEALTH_PROBE_TIMEOUT_SECONDS,
+        )
+        await asyncio.wait_for(
+            client.get_collections(),
+            timeout=_HEALTH_PROBE_TIMEOUT_SECONDS,
+        )
+        return True
+    except Exception:
+        return False
+    finally:
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass
+
+
+async def _probe_redis() -> bool:
+    """Probe the configured Redis client even after an earlier failed ping."""
+    if redis_client is None:
+        return False
+    try:
+        await asyncio.wait_for(
+            redis_client.ping(),
+            timeout=_HEALTH_PROBE_TIMEOUT_SECONDS,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _ollama_http_probe() -> bool:
+    import urllib.request
+
+    req = urllib.request.Request(f"{OLLAMA_BASE_URL.rstrip('/')}/api/tags")
+    with urllib.request.urlopen(req, timeout=_HEALTH_PROBE_TIMEOUT_SECONDS) as response:
+        return response.status == 200
+
+
+async def _probe_ollama() -> bool:
+    """Probe Ollama off the event loop using its stable tags endpoint."""
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_ollama_http_probe),
+            timeout=_HEALTH_PROBE_TIMEOUT_SECONDS,
+        )
+    except Exception:
+        return False
+
+
+async def _dependency_health() -> Dict[str, Any]:
+    qdrant_ok, redis_ok, ollama_ok = await asyncio.gather(
+        _probe_qdrant(),
+        _probe_redis(),
+        _probe_ollama(),
+    )
+    ready = qdrant_ok and redis_ok and ollama_ok
+    return {
+        "status": "healthy" if ready else "degraded",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+        "services": {
+            "qdrant": "connected" if qdrant_ok else "disconnected",
+            "redis": "connected" if redis_ok else "disconnected",
+            "ollama_api": "connected" if ollama_ok else "disconnected",
+            "rust_acceleration": "active" if RUST_AVAILABLE_FALLBACK() else "inactive",
+        },
+    }
 
 
 # --- MIDDLEWARES & AUTHENTICATOR ADAPTER ---
@@ -524,49 +615,29 @@ async def api_stats(key_data: Dict[str, Any] = Depends(get_api_key_details)):
         logger.exception("Error getting stats:")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/healthz", summary="Gateway process liveness")
+async def gateway_liveness():
+    """Return process liveness without touching any satellite dependency."""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+    }
+
+
+@app.get("/readyz", summary="Gateway dependency readiness")
+async def gateway_readiness():
+    """Return 503 until every required production dependency is reachable."""
+    health = await _dependency_health()
+    return JSONResponse(
+        status_code=200 if health["status"] == "healthy" else 503,
+        content=health,
+    )
+
+
 @app.get("/api/v1/health", summary="Detailed health monitor of satellite services")
 async def api_health():
-    qdrant_ok = False
-    redis_ok = False
-    ollama_ok = False
-    
-    # Check Qdrant
-    try:
-        engine = get_vector_service()
-        await engine.vector_store.client.get_collections()
-        qdrant_ok = True
-    except Exception:
-        pass
-        
-    # Check Redis
-    if redis_available:
-        try:
-            await redis_client.ping()
-            redis_ok = True
-        except Exception:
-            pass
-            
-    # Check Ollama
-    try:
-        from ses.config import OLLAMA_BASE_URL
-        import urllib.request
-        req = urllib.request.Request(f"{OLLAMA_BASE_URL.rstrip('/')}/")
-        with urllib.request.urlopen(req, timeout=2) as response:
-            if response.status == 200:
-                ollama_ok = True
-    except Exception:
-        pass
-
-    return {
-        "status": "healthy" if qdrant_ok and (not redis_available or redis_ok) else "degraded",
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
-        "services": {
-            "qdrant": "connected" if qdrant_ok else "disconnected",
-            "redis": "connected" if redis_ok else ("disabled" if not redis_available else "disconnected"),
-            "ollama_api": "connected" if ollama_ok else "disconnected",
-            "rust_acceleration": "active" if RUST_AVAILABLE_FALLBACK() else "inactive"
-        }
-    }
+    """Report dependency state without initializing embeddings or the RAG engine."""
+    return await _dependency_health()
 
 
 # --- ADMIN MONETIZATION & MANAGEMENT ROUTES ---

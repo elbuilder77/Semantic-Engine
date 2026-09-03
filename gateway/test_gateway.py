@@ -26,6 +26,9 @@ def mock_gateway_services():
     with patch("gateway.server.get_vector_service") as mock_service, \
          patch("gateway.server.LocalLLMProvider") as mock_llm_class, \
          patch("gateway.server.get_database_adapter") as mock_db_func, \
+         patch("gateway.server._probe_qdrant", new_callable=AsyncMock, return_value=True), \
+         patch("gateway.server._probe_redis", new_callable=AsyncMock, return_value=True), \
+         patch("gateway.server._probe_ollama", new_callable=AsyncMock, return_value=True), \
          patch("gateway.server.redis_available", False):
         
         # Setup mock database state
@@ -199,13 +202,50 @@ def mock_gateway_services():
         yield mock_engine, mock_llm
 
 
-def test_health_endpoint():
+def test_health_endpoint_does_not_initialize_rag_engine():
     response = client.get("/api/v1/health")
     assert response.status_code == 200
     data = response.json()
-    assert "status" in data
-    assert "services" in data
-    assert "qdrant" in data["services"]
+    assert data["status"] == "healthy"
+    assert data["services"]["qdrant"] == "connected"
+    server_module.get_vector_service.assert_not_called()
+
+
+def test_liveness_does_not_probe_dependencies():
+    with patch("gateway.server._dependency_health", new_callable=AsyncMock) as health_probe:
+        response = client.get("/healthz")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+    health_probe.assert_not_awaited()
+
+
+def test_readiness_returns_503_when_a_required_dependency_is_down():
+    degraded = {
+        "status": "degraded",
+        "timestamp": "2026-09-02T00:00:00Z",
+        "services": {
+            "qdrant": "connected",
+            "redis": "connected",
+            "ollama_api": "disconnected",
+            "rust_acceleration": "inactive",
+        },
+    }
+    with patch(
+        "gateway.server._dependency_health",
+        new_callable=AsyncMock,
+        return_value=degraded,
+    ):
+        response = client.get("/readyz")
+
+    assert response.status_code == 503
+    assert response.json() == degraded
+
+
+def test_readiness_returns_200_when_required_dependencies_are_up():
+    response = client.get("/readyz")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
 
 
 def test_unauthorized_access():
@@ -244,6 +284,36 @@ def test_cors_rejects_wildcard(monkeypatch):
     monkeypatch.setenv("GATEWAY_CORS_ORIGINS", "*")
     with pytest.raises(RuntimeError, match="wildcard"):
         server_module.configured_cors_origins()
+
+
+def test_cors_defaults_include_both_local_portal_hosts(monkeypatch):
+    monkeypatch.delenv("GATEWAY_CORS_ORIGINS", raising=False)
+    monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
+
+    origins = server_module.configured_cors_origins()
+
+    assert "http://localhost:3000" in origins
+    assert "http://127.0.0.1:3000" in origins
+
+
+def test_cors_accepts_legacy_environment_alias(monkeypatch):
+    monkeypatch.delenv("GATEWAY_CORS_ORIGINS", raising=False)
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "https://legacy.example.com")
+
+    assert server_module.configured_cors_origins() == ["https://legacy.example.com"]
+
+
+def test_cors_preflight_accepts_readme_portal_origin():
+    response = client.options(
+        "/api/v1/health",
+        headers={
+            "Origin": "http://127.0.0.1:3000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:3000"
 
 
 @pytest.mark.asyncio

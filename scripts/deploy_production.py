@@ -35,8 +35,8 @@ OLLAMA_MODEL=llama3.2
 
 GATEWAY_BIND_IP=127.0.0.1
 PORTAL_BIND_IP=127.0.0.1
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-NEXT_PUBLIC_API_URL=http://localhost:8000
+GATEWAY_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+NEXT_PUBLIC_SES_API_URL=http://localhost:8000
 """
     output_path.write_text(content, encoding="utf-8")
     print(f"[OK] Generated secure production configuration at: {output_path}")
