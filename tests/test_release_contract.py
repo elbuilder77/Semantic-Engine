@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_release_versions_and_tag_are_consistent():
-    assert validate("v2.0.1") == ("2.0.1", "0.1.0")
+    assert validate("v2.0.2") == ("2.0.2", "0.1.0")
 
 
 def test_release_validator_rejects_a_mismatched_tag():
@@ -21,7 +21,7 @@ def test_release_validator_rejects_a_mismatched_tag():
         text=True,
     )
     assert result.returncode != 0
-    assert "must match ses-core version v2.0.1" in result.stderr
+    assert "must match ses-core version v2.0.2" in result.stderr
 
 
 def test_ses_core_build_embeds_the_rust_extension():
@@ -32,6 +32,9 @@ def test_ses_core_build_embeds_the_rust_extension():
     assert config["tool"]["maturin"]["manifest-path"] == "core_rs/Cargo.toml"
     assert config["tool"]["maturin"]["python-packages"] == ["ses"]
     assert config["tool"]["maturin"]["features"] == ["python"]
+    assert config["tool"]["maturin"]["include"] == [
+        {"path": "LICENSE", "format": "sdist"}
+    ]
 
 
 def test_release_workflow_uses_oidc_and_fails_if_crates_token_is_missing():
@@ -41,6 +44,8 @@ def test_release_workflow_uses_oidc_and_fails_if_crates_token_is_missing():
 
     assert "id-token: write" in workflow
     assert "pypa/gh-action-pypi-publish@release/v1" in workflow
+    assert "skip-existing: true" in workflow
     assert "PYPI_API_TOKEN" not in workflow
     assert "CARGO_REGISTRY_TOKEN is required" in workflow
     assert "if: env.CARGO_REGISTRY_TOKEN != ''" not in workflow
+    assert "Crate version already exists; skipping publication." in workflow

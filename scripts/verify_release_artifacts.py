@@ -28,6 +28,7 @@ def verify_wheel(path: Path, expected_version: str) -> None:
 def verify_sdist(path: Path, expected_version: str) -> None:
     prefix = f"ses_core-{expected_version}/"
     required = {
+        f"{prefix}LICENSE",
         f"{prefix}pyproject.toml",
         f"{prefix}core_rs/Cargo.toml",
         f"{prefix}core_rs/src/lib.rs",

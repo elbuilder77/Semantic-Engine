@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "ses-core"
-version = "2.0.1"
+version = "2.0.2"
 description = "Offline-first RAG engine for private, locally operated document systems"
 authors = [{name = "Julio Patron", email = "juliopc92@gmail.com"}]
 license = "GPL-3.0-only"
@@ -50,6 +50,7 @@ Repository = "https://github.com/elbuilder77/Semantic-Engine.git"
 [tool.maturin]
 bindings = "pyo3"
 features = ["python"]
+include = [{ path = "LICENSE", format = "sdist" }]
 manifest-path = "core_rs/Cargo.toml"
 module-name = "jas_vector_core"
 python-packages = ["ses"]
