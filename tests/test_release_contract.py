@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_release_versions_and_tag_are_consistent():
-    assert validate("v2.0.0") == ("2.0.0", "0.1.0")
+    assert validate("v2.0.1") == ("2.0.1", "0.1.0")
 
 
 def test_release_validator_rejects_a_mismatched_tag():
@@ -21,7 +21,7 @@ def test_release_validator_rejects_a_mismatched_tag():
         text=True,
     )
     assert result.returncode != 0
-    assert "must match ses-core version v2.0.0" in result.stderr
+    assert "must match ses-core version v2.0.1" in result.stderr
 
 
 def test_ses_core_build_embeds_the_rust_extension():

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "ses-core"
-version = "2.0.0"
+version = "2.0.1"
 description = "Offline-first RAG engine for private, locally operated document systems"
 authors = [{name = "Julio Patron", email = "juliopc92@gmail.com"}]
 license = "GPL-3.0-only"
