@@ -49,4 +49,12 @@ def test_release_workflow_uses_oidc_and_fails_if_crates_token_is_missing():
     assert "CARGO_REGISTRY_TOKEN is required" in workflow
     assert "if: env.CARGO_REGISTRY_TOKEN != ''" not in workflow
     assert "Crate version already exists; skipping publication." in workflow
-    assert "Semantic-Engine-release-workflow/1.0" in workflow
+    assert "python scripts/check_crate_publication.py" in workflow
+
+
+def test_ci_runs_the_live_crates_io_preflight():
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "python scripts/check_crate_publication.py --allow-missing" in workflow

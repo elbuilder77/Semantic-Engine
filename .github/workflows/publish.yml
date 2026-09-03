@@ -30,6 +30,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: python scripts/validate_release.py --tag "$RELEASE_TAG"
+      - name: Validate crates.io release preflight
+        run: python scripts/check_crate_publication.py --allow-missing
 
   build-linux-wheels:
     name: Build Linux wheel (${{ matrix.target }})
@@ -230,16 +232,15 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
           CRATE_VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('core_rs/Cargo.toml', 'rb'))['package']['version'])")
-          STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' \
-            --user-agent "Semantic-Engine-release-workflow/1.0 (https://github.com/${{ github.repository }})" \
-            "https://crates.io/api/v1/crates/jas_vector_core/$CRATE_VERSION")
-          if [ "$STATUS" = "200" ]; then
+          if python scripts/check_crate_publication.py --version "$CRATE_VERSION"; then
             echo "Crate version already exists; skipping publication."
-          elif [ "$STATUS" = "404" ]; then
-            cargo publish --manifest-path core_rs/Cargo.toml --locked
           else
-            echo "::error::Unable to determine crates.io publication state (HTTP $STATUS)."
-            exit 1
+            CHECK_EXIT=$?
+            if [ "$CHECK_EXIT" = "3" ]; then
+              cargo publish --manifest-path core_rs/Cargo.toml --locked
+            else
+              exit "$CHECK_EXIT"
+            fi
           fi
 
   attach-release-assets:
