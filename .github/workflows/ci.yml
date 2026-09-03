@@ -67,6 +67,9 @@ jobs:
         python-version: "3.12"
         cache: "pip"
 
+    - name: Validate crates.io release preflight
+      run: python scripts/check_crate_publication.py --allow-missing
+
     - name: Install Rust Toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
