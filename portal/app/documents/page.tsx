@@ -8,6 +8,8 @@ import { DocumentRow } from "@/components/DocumentRow";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { UploadCloud, FileText } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { ConnectionErrorState } from "@/components/ConnectionErrorState";
+import { gatewayErrorMessage } from "@/lib/gateway-errors";
 
 export default function DocumentsPage() {
   const { toast } = useToast();
@@ -15,6 +17,8 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -23,7 +27,13 @@ export default function DocumentsPage() {
       .then((data) => {
         if (active) setDocuments(data.documents || []);
       })
-      .catch((error: unknown) => console.error(error))
+      .catch((error: unknown) => {
+        console.error(error);
+        if (active) {
+          setDocuments([]);
+          setLoadError(gatewayErrorMessage(error));
+        }
+      })
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -31,15 +41,20 @@ export default function DocumentsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const fetchDocuments = async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const data = await api.listDocuments(100);
       setDocuments(data.documents || []);
     } catch (err) {
       console.error(err);
-      toast("Failed to load documents", "error");
+      const message = gatewayErrorMessage(err);
+      setDocuments([]);
+      setLoadError(message);
+      toast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -53,7 +68,7 @@ export default function DocumentsPage() {
       fetchDocuments();
     } catch (err) {
       console.error(err);
-      toast(`Failed to upload ${file.name}`, "error");
+      toast(`${file.name}: ${gatewayErrorMessage(err)}`, "error");
     } finally {
       setIsUploading(false);
     }
@@ -73,9 +88,14 @@ export default function DocumentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await api.deleteDocument(id);
-    toast("Document deleted", "success");
-    fetchDocuments();
+    try {
+      await api.deleteDocument(id);
+      toast("Document deleted", "success");
+      await fetchDocuments();
+    } catch (err) {
+      console.error(err);
+      toast(gatewayErrorMessage(err), "error");
+    }
   };
 
   return (
@@ -126,12 +146,23 @@ export default function DocumentsPage() {
       <div className="glass-panel rounded-xl overflow-hidden flex flex-col min-h-[400px]">
         <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center gap-3">
           <FileText className="w-4 h-4 text-slate-400" />
-          <h3 className="font-medium text-slate-300">Indexed Documents ({documents.length})</h3>
+          <h3 className="font-medium text-slate-300">
+            Indexed Documents ({loading ? "…" : loadError ? "Unavailable" : documents.length})
+          </h3>
         </div>
         
         <div className="flex-1 overflow-auto">
           {loading ? (
             <LoadingSpinner text="Loading documents..." />
+          ) : loadError ? (
+            <ConnectionErrorState
+              message={loadError}
+              onRetry={() => {
+                setLoading(true);
+                setLoadError(null);
+                setReloadKey((value) => value + 1);
+              }}
+            />
           ) : documents.length === 0 ? (
             <EmptyState 
               icon={FileText}

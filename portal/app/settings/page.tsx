@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Save, Server, KeyRound, CheckCircle2 } from "lucide-react";
+import { gatewayErrorMessage } from "@/lib/gateway-errors";
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const [apiUrl, setApiUrl] = useState("http://localhost:8000");
   const [apiKey, setApiKey] = useState("");
   const [isTesting, setIsTesting] = useState(false);
-  const [testStatus, setTestStatus] = useState<"idle" | "success" | "error">("idle");
+  const [testStatus, setTestStatus] = useState<"idle" | "success" | "degraded" | "error">("idle");
+  const [testError, setTestError] = useState<string | null>(null);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -34,15 +36,25 @@ export default function SettingsPage() {
     
     setIsTesting(true);
     setTestStatus("idle");
+    setTestError(null);
     
     try {
-      await Promise.all([api.getHealth(), api.getAnalytics()]);
-      setTestStatus("success");
-      toast("Connection successful!", "success");
+      const [health] = await Promise.all([api.getHealth(), api.getAnalytics()]);
+      if (health.status === "healthy") {
+        setTestStatus("success");
+        toast("Connection successful!", "success");
+      } else {
+        const message = "Gateway connected, but one or more required services are degraded.";
+        setTestStatus("degraded");
+        setTestError(message);
+        toast(message, "error");
+      }
     } catch (err) {
       console.error(err);
+      const message = gatewayErrorMessage(err);
       setTestStatus("error");
-      toast("Connection failed. Check URL and API Key.", "error");
+      setTestError(message);
+      toast(message, "error");
     } finally {
       setIsTesting(false);
     }
@@ -106,6 +118,9 @@ export default function SettingsPage() {
                 <CheckCircle2 className="w-4 h-4" /> Connected
               </span>
             )}
+            {testStatus === "degraded" && (
+              <span className="text-sm font-medium text-amber-400">Connected · Degraded</span>
+            )}
           </div>
           
           <button
@@ -116,6 +131,11 @@ export default function SettingsPage() {
             Save Settings
           </button>
         </div>
+        {testError && (
+          <p role="alert" className="mt-4 text-sm text-amber-300">
+            {testError}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import DocumentsPage from '../app/documents/page';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../lib/api';
+import { GatewayError } from '../lib/gateway-errors';
 
 vi.mock('../lib/api', () => ({
   api: {
@@ -72,6 +73,25 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => {
       expect(api.deleteDocument).toHaveBeenCalledWith('doc_to_delete');
+    });
+  });
+
+  it('distinguishes an unavailable Gateway from an empty collection', async () => {
+    vi.mocked(api.listDocuments).mockRejectedValue(
+      new GatewayError('dependency', 'Qdrant unavailable', 503),
+    );
+
+    render(
+      <ToastProvider>
+        <DocumentsPage />
+      </ToastProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Gateway unavailable')).toBeDefined();
+      expect(screen.getByText(/required service is unavailable/i)).toBeDefined();
+      expect(screen.getByText('Indexed Documents (Unavailable)')).toBeDefined();
+      expect(screen.queryByText('No documents yet')).toBeNull();
     });
   });
 });
