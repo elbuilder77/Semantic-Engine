@@ -36,7 +36,7 @@ the source of truth.
 | Portal | Next.js 16; lint, build, and eight administration routes validated | Real-service E2E remains open |
 | Rust | CPython 3.12 wheel, tests, Clippy, and NumPy API | Optional and used for candidate batches larger than 50 |
 | CI | Portal, Python, Rust, wheel, Pytest, and synthetic smoke in GitHub Actions | Does not replace end-to-end testing |
-| Packaging | Python wheel and sdist build and pass Twine checks | PyPI Trusted Publisher still requires configuration |
+| Packaging | `ses-core` 2.0.3 on PyPI and `jas_vector_core` 0.1.0 on crates.io; five ABI3 wheels, sdist, and checksums verified | Published versions are immutable; each correction requires a new version |
 | Mount Mode | Reindexing ingests first and preserves pending cleanup IDs in the manifest | No distributed transaction with Qdrant |
 
 ## Architecture
@@ -63,11 +63,19 @@ Main directories:
 - <code>core_rs/</code>: the <code>jas_vector_core</code> PyO3 extension.
 - <code>tests/</code>: Python tests and a synthetic microbenchmark.
 
-## Install from source
+## Install from PyPI
 
-The currently validated route is installation from this repository. Do not
-assume that <code>pip install ses-core</code> matches <code>main</code> until a
-public release has been verified.
+~~~powershell
+python -m pip install "ses-core==2.0.3"
+~~~
+
+Version 2.0.3 is published through Trusted Publishing (OIDC) with ABI3 wheels
+for Windows, Linux, and macOS, plus the sdist. Artifacts and checksums are also
+available from [GitHub Release v2.0.3](https://github.com/elbuilder77/Semantic-Engine/releases/tag/v2.0.3).
+The standalone crate is published as
+[`jas_vector_core` 0.1.0](https://crates.io/crates/jas_vector_core/0.1.0).
+
+## Install from source
 
 ~~~powershell
 git clone https://github.com/elbuilder77/Semantic-Engine.git
@@ -236,8 +244,9 @@ pytest -q -m integration tests/integration
 
 [GitHub Actions](https://github.com/elbuilder77/Semantic-Engine/actions) also
 builds and installs the CPython 3.12 Rust wheel. The manual packaging workflow
-builds and verifies the sdist/wheel but skips publication. Only a published
-GitHub Release can activate the PyPI OIDC job.
+builds and verifies the sdist/wheel but skips publication. Published GitHub
+releases activate the PyPI OIDC and crates.io publication jobs; v2.0.3 passed
+that complete path.
 
 The microbenchmark in <code>tests/performance/benchmark.py</code> uses synthetic
 vectors. It is a reproducible smoke, not end-to-end ingestion, disk, Qdrant, or
@@ -250,7 +259,6 @@ LLM latency, and its numbers are not an SLA.
 - Persistent telemetry is validated with SQLite; real PostgreSQL validation remains open.
 - No named 40–60 GB ingestion/retrieval workload has been executed.
 - Changed-file reindexing is manifest-recoverable but not cross-process atomic.
-- PyPI Trusted Publishing and a public release remain pending.
 - The repository does not prove corporate SLAs, complete RBAC, or HIPAA/GDPR
   certification.
 

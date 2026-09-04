@@ -37,7 +37,7 @@ la fuente de verdad.
 | Portal | Next.js 16; lint, build y ocho rutas administrativas validadas | E2E contra servicios reales pendiente |
 | Rust | Wheel CPython 3.12, pruebas, Clippy y API NumPy | Es opcional y se activa en lotes de más de 50 candidatos |
 | CI | Portal, Python, Rust, wheel, Pytest y smoke sintético en GitHub Actions | No sustituye pruebas end-to-end |
-| Publicación | Wheel y sdist Python se construyen y pasan Twine | PyPI Trusted Publisher aún debe configurarse |
+| Publicación | `ses-core` 2.0.3 en PyPI y `jas_vector_core` 0.1.0 en crates.io; cinco wheels ABI3, sdist y checksums verificados | Las versiones publicadas son inmutables; cada corrección requiere una versión nueva |
 | Mount Mode | Reindexado primero ingiere y conserva limpiezas pendientes en el manifiesto | No existe una transacción distribuida con Qdrant |
 
 ## Arquitectura
@@ -125,6 +125,19 @@ resp, _ := client.Search(ctx, ses.SearchRequest{
 ~~~
 
 ---
+
+## Instalación desde PyPI
+
+~~~powershell
+python -m pip install "ses-core==2.0.3"
+~~~
+
+La versión 2.0.3 está publicada mediante Trusted Publishing (OIDC) con wheels
+ABI3 para Windows, Linux y macOS, además del sdist. Los artefactos y sus
+checksums también están disponibles en la
+[GitHub Release v2.0.3](https://github.com/elbuilder77/Semantic-Engine/releases/tag/v2.0.3).
+El crate standalone se publica como
+[`jas_vector_core` 0.1.0](https://crates.io/crates/jas_vector_core/0.1.0).
 
 ## Instalación desde el código fuente
 
